@@ -9,6 +9,8 @@ export default function RegistrarList() {
   const [registrars, setRegistrars] = useState<Registrar[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshingRegistrarIds, setRefreshingRegistrarIds] = useState<string[]>([]);
+  const [faviconVersionByRegistrarId, setFaviconVersionByRegistrarId] = useState<Record<string, number>>({});
+  const [hiddenRegistrarFaviconIds, setHiddenRegistrarFaviconIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -44,6 +46,13 @@ export default function RegistrarList() {
         covered_domains: number;
         failed: number;
       };
+      if (summary.fetched > 0) {
+        setFaviconVersionByRegistrarId((prev) => ({
+          ...prev,
+          [registrarId]: Date.now(),
+        }));
+        setHiddenRegistrarFaviconIds((prev) => prev.filter((id) => id !== registrarId));
+      }
       setMessage(
         `Refreshed favicons for ${registrarName}: ${summary.fetched} fetched, ${summary.covered_domains} domains covered${summary.failed > 0 ? `, ${summary.failed} failed` : ''}.`,
       );
@@ -97,12 +106,19 @@ export default function RegistrarList() {
                     <div className="flex items-center gap-2">
                       {reg.website ? (
                         <img
-                          src={`${apiBaseUrl}/api/public/registrar-favicons/${reg.id}`}
+                          key={`${reg.id}-${faviconVersionByRegistrarId[reg.id] ?? 0}`}
+                          src={`${apiBaseUrl}/api/public/registrar-favicons/${reg.id}?v=${faviconVersionByRegistrarId[reg.id] ?? 0}`}
                           alt=""
                           className="h-5 w-5 rounded"
                           loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
+                          style={{ display: hiddenRegistrarFaviconIds.includes(reg.id) ? 'none' : undefined }}
+                          onError={() => {
+                            setHiddenRegistrarFaviconIds((prev) => (
+                              prev.includes(reg.id) ? prev : [...prev, reg.id]
+                            ));
+                          }}
+                          onLoad={() => {
+                            setHiddenRegistrarFaviconIds((prev) => prev.filter((id) => id !== reg.id));
                           }}
                         />
                       ) : (

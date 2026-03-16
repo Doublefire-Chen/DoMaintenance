@@ -123,8 +123,10 @@ async fn fetch_favicon_bytes(client: &reqwest::Client, source: &str) -> Result<V
         candidates.push(format!("http://{}/favicon.ico", host));
     }
 
-    if let Ok(icon_href) = discover_icon_href(client, &normalized_base).await {
-        candidates.insert(0, icon_href);
+    if let Ok(icon_hrefs) = discover_icon_hrefs(client, &normalized_base).await {
+        for icon_href in icon_hrefs.into_iter().rev() {
+            candidates.insert(0, icon_href);
+        }
     }
 
     for candidate in candidates {
@@ -179,7 +181,7 @@ async fn try_download_icon(client: &reqwest::Client, url: &str) -> Result<Vec<u8
     Ok(bytes.to_vec())
 }
 
-async fn discover_icon_href(client: &reqwest::Client, base_url: &str) -> Result<String, String> {
+async fn discover_icon_hrefs(client: &reqwest::Client, base_url: &str) -> Result<Vec<String>, String> {
     let response = client
         .get(base_url)
         .timeout(std::time::Duration::from_secs(10))
@@ -200,25 +202,32 @@ async fn discover_icon_href(client: &reqwest::Client, base_url: &str) -> Result<
         .await
         .map_err(|e| format!("Failed to read homepage HTML for {}: {}", base_url, e))?;
 
-    for line in html.lines() {
-        let lower = line.to_lowercase();
-        if lower.contains("<link") && lower.contains("icon") {
-            if let Some(href) = extract_href(line) {
-                if href.starts_with("http://") || href.starts_with("https://") {
-                    return Ok(href);
-                }
-                if href.starts_with("//") {
-                    return Ok(format!("https:{}", href));
-                }
-                if href.starts_with('/') {
-                    return Ok(format!("{}{}", base_url, href));
-                }
-                return Ok(format!("{}/{}", base_url.trim_end_matches('/'), href));
-            }
+    let mut hrefs = Vec::new();
+    for tag in extract_link_tags(&html) {
+        let lower = tag.to_ascii_lowercase();
+        if !lower.contains("icon") {
+            continue;
         }
+
+        let Some(rel) = extract_attribute_value(tag, "rel") else {
+            continue;
+        };
+        if !rel.to_ascii_lowercase().contains("icon") {
+            continue;
+        }
+
+        let Some(href) = extract_attribute_value(tag, "href") else {
+            continue;
+        };
+        hrefs.push(resolve_icon_href(base_url, &href));
     }
 
-    Err(format!("No favicon link found for {}", base_url))
+    hrefs.dedup();
+    if hrefs.is_empty() {
+        return Err(format!("No favicon link found for {}", base_url));
+    }
+
+    Ok(hrefs)
 }
 
 fn normalize_base_url(value: &str) -> String {
@@ -238,9 +247,18 @@ fn extract_host(value: &str) -> Option<String> {
     Some(without_scheme.split('/').next()?.to_string())
 }
 
-fn extract_href(line: &str) -> Option<String> {
-    let href_index = line.find("href=")?;
-    let rest = &line[href_index + 5..];
+fn extract_link_tags(html: &str) -> Vec<&str> {
+    html.split("<link").skip(1).filter_map(|fragment| {
+        let end = fragment.find('>')?;
+        Some(&fragment[..end])
+    }).collect()
+}
+
+fn extract_attribute_value(tag_fragment: &str, attribute: &str) -> Option<String> {
+    let pattern = format!("{}=", attribute);
+    let lower = tag_fragment.to_ascii_lowercase();
+    let start = lower.find(&pattern)?;
+    let rest = &tag_fragment[start + pattern.len()..];
     let quote = rest.chars().next()?;
 
     if quote != '"' && quote != '\'' {
@@ -250,4 +268,17 @@ fn extract_href(line: &str) -> Option<String> {
     let rest = &rest[1..];
     let end_index = rest.find(quote)?;
     Some(rest[..end_index].to_string())
+}
+
+fn resolve_icon_href(base_url: &str, href: &str) -> String {
+    if href.starts_with("http://") || href.starts_with("https://") {
+        return href.to_string();
+    }
+    if href.starts_with("//") {
+        return format!("https:{}", href);
+    }
+    if href.starts_with('/') {
+        return format!("{}{}", base_url, href);
+    }
+    format!("{}/{}", base_url.trim_end_matches('/'), href)
 }
