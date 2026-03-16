@@ -17,9 +17,14 @@ export default function Settings() {
   const [refreshIntervalHours, setRefreshIntervalHours] = useState('24');
   const [requestDelaySeconds, setRequestDelaySeconds] = useState('60');
   const [dateTimeFormat, setDateTimeFormat] = useState<DateTimeDisplayFormat>('slash_utc_offset');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
 
   useEffect(() => {
     api.get('/api/admin/settings')
@@ -63,6 +68,49 @@ export default function Settings() {
       setMessage('Failed to save settings.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordMessage(null);
+
+    if (newPassword.length < 8) {
+      setPasswordMessage('New password must be at least 8 characters long.');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordMessage('New password confirmation does not match.');
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const res = await api.post('/api/admin/change-password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setPasswordMessage(res.data.message || 'Password updated. Redirecting to sign in...');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      window.setTimeout(() => {
+        window.location.href = '/login';
+      }, 800);
+    } catch (err: unknown) {
+      console.error(err);
+      const responseError = typeof err === 'object'
+        && err !== null
+        && 'response' in err
+        ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+        : undefined;
+      const errorMessage = typeof responseError === 'string'
+        ? responseError
+        : 'Failed to update password.';
+      setPasswordMessage(errorMessage);
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -170,6 +218,73 @@ export default function Settings() {
             >
               {saving ? 'Saving...' : 'Save Settings'}
             </button>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            Password
+          </h3>
+
+          <div className="space-y-4 max-w-md">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Current Password
+              </label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                disabled={loading || changingPassword}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                New Password
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                disabled={loading || changingPassword}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                disabled={loading || changingPassword}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <button
+              onClick={handleChangePassword}
+              disabled={
+                loading
+                || changingPassword
+                || currentPassword.length === 0
+                || newPassword.length === 0
+                || confirmNewPassword.length === 0
+              }
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50"
+            >
+              {changingPassword ? 'Updating Password...' : 'Update Password'}
+            </button>
+
+            {passwordMessage && (
+              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 rounded-lg">
+                {passwordMessage}
+              </div>
+            )}
           </div>
         </div>
 

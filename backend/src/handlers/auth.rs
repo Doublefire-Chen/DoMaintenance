@@ -1,7 +1,7 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::{Extension, State}, http::StatusCode, Json};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use chrono::{Duration, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, Set};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -12,6 +12,12 @@ use crate::errors::AppError;
 pub struct LoginRequest {
     pub username: String,
     pub password: String,
+}
+
+#[derive(Deserialize)]
+pub struct ChangePasswordRequest {
+    pub current_password: String,
+    pub new_password: String,
 }
 
 pub async fn login(
@@ -146,5 +152,67 @@ pub async fn me(
     Ok(Json(serde_json::json!({
         "id": user.id,
         "username": user.username,
+    })))
+}
+
+pub async fn change_password(
+    State(state): State<crate::AppState>,
+    Extension(user_id): Extension<Uuid>,
+    Json(payload): Json<ChangePasswordRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    if payload.new_password.trim().len() < 8 {
+        return Err(AppError::BadRequest(
+            "New password must be at least 8 characters long".to_string(),
+        ));
+    }
+
+    let user = user::Entity::find_by_id(user_id)
+        .one(&state.db)
+        .await?
+        .ok_or(AppError::Unauthorized)?;
+
+    let parsed_hash = argon2::PasswordHash::new(&user.password_hash)
+        .map_err(|_| AppError::Internal("Invalid password hash".to_string()))?;
+
+    use argon2::PasswordVerifier;
+    argon2::Argon2::default()
+        .verify_password(payload.current_password.as_bytes(), &parsed_hash)
+        .map_err(|_| AppError::BadRequest("Current password is incorrect".to_string()))?;
+
+    if payload.current_password == payload.new_password {
+        return Err(AppError::BadRequest(
+            "New password must be different from the current password".to_string(),
+        ));
+    }
+
+    use argon2::PasswordHasher;
+    let salt = argon2::password_hash::SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
+    let password_hash = argon2::Argon2::default()
+        .hash_password(payload.new_password.as_bytes(), &salt)
+        .map_err(|_| AppError::Internal("Failed to hash password".to_string()))?
+        .to_string();
+
+    let mut user_model: user::ActiveModel = user.into();
+    user_model.password_hash = Set(password_hash);
+    user_model.updated_at = Set(Utc::now().fixed_offset());
+    user_model.update(&state.db).await?;
+
+    let session_ids = session::Entity::find()
+        .filter(session::Column::UserId.eq(user_id))
+        .select_only()
+        .column(session::Column::Id)
+        .into_tuple::<Uuid>()
+        .all(&state.db)
+        .await?;
+
+    if !session_ids.is_empty() {
+        session::Entity::delete_many()
+            .filter(session::Column::Id.is_in(session_ids))
+            .exec(&state.db)
+            .await?;
+    }
+
+    Ok(Json(serde_json::json!({
+        "message": "Password updated. Please sign in again."
     })))
 }

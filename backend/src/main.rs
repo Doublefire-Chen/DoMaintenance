@@ -187,6 +187,10 @@ async fn main() {
             "/api/admin/settings",
             put(handlers::settings::update_settings),
         )
+        .route(
+            "/api/admin/change-password",
+            post(handlers::auth::change_password),
+        )
         .route("/api/admin/currencies", get(handlers::currencies::list))
         .route(
             "/api/admin/whois/:domain",

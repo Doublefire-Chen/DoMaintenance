@@ -68,6 +68,10 @@ async fn lookup_domain_with_client(client: &reqwest::Client, domain: &str) -> Re
         ));
     }
 
+    if matches!(domain_tld(domain), Some("se")) {
+        return lookup_se_domain(domain).await;
+    }
+
     if matches!(domain_tld(domain), Some("mk")) {
         return lookup_mk_domain(domain).await;
     }
@@ -195,31 +199,80 @@ fn parse_mk_whois_response(domain: &str, body: &str) -> Result<DomainLookup, Str
     })
 }
 
-async fn lookup_mk_domain(domain: &str) -> Result<DomainLookup, String> {
+fn parse_se_whois_response(domain: &str, body: &str) -> Result<DomainLookup, String> {
+    let lowered = body.to_ascii_lowercase();
+    if lowered.contains("not found")
+        || lowered.contains("no entries found")
+        || lowered.contains("no match")
+    {
+        return Err(format!("Domain not found in .se WHOIS: {}", domain));
+    }
+
+    let mut registration_date = None;
+    let mut expiration_date = None;
+
+    for line in body.lines() {
+        let trimmed = line.trim();
+
+        if let Some(value) = trimmed.strip_prefix("created:") {
+            registration_date = parse_rdap_event_date(value.trim());
+        } else if let Some(value) = trimmed.strip_prefix("expires:") {
+            expiration_date = parse_rdap_event_date(value.trim());
+        }
+    }
+
+    if registration_date.is_none() && expiration_date.is_none() {
+        return Err(format!(
+            "Failed to parse .se WHOIS response for {}; required date fields were not found",
+            domain
+        ));
+    }
+
+    Ok(DomainLookup {
+        expiration_date,
+        registration_date,
+    })
+}
+
+async fn lookup_tcp_whois(
+    host: &str,
+    domain: &str,
+    registry_label: &str,
+) -> Result<String, String> {
     let mut stream = tokio::time::timeout(
         std::time::Duration::from_secs(10),
-        tokio::net::TcpStream::connect(("whois.marnet.mk", 43)),
+        tokio::net::TcpStream::connect((host, 43)),
     )
     .await
     .map_err(|_| format!("WHOIS request timed out for {}", domain))?
-    .map_err(|e| format!("Failed to connect to .mk WHOIS for {}: {}", domain, e))?;
+    .map_err(|e| format!("Failed to connect to {} WHOIS for {}: {}", registry_label, domain, e))?;
 
     stream
         .write_all(format!("{}\r\n", domain).as_bytes())
         .await
-        .map_err(|e| format!("Failed to send .mk WHOIS query for {}: {}", domain, e))?;
+        .map_err(|e| format!("Failed to send {} WHOIS query for {}: {}", registry_label, domain, e))?;
 
     let mut body = String::new();
     stream
         .read_to_string(&mut body)
         .await
-        .map_err(|e| format!("Failed to read .mk WHOIS response for {}: {}", domain, e))?;
+        .map_err(|e| format!("Failed to read {} WHOIS response for {}: {}", registry_label, domain, e))?;
 
     if body.trim().is_empty() {
-        return Err(format!("Empty .mk WHOIS response for {}", domain));
+        return Err(format!("Empty {} WHOIS response for {}", registry_label, domain));
     }
 
+    Ok(body)
+}
+
+async fn lookup_mk_domain(domain: &str) -> Result<DomainLookup, String> {
+    let body = lookup_tcp_whois("whois.marnet.mk", domain, ".mk").await?;
     parse_mk_whois_response(domain, &body)
+}
+
+async fn lookup_se_domain(domain: &str) -> Result<DomainLookup, String> {
+    let body = lookup_tcp_whois("whois.iis.se", domain, ".se").await?;
+    parse_se_whois_response(domain, &body)
 }
 
 async fn refresh_domain_record_with_client(
