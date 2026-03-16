@@ -86,11 +86,12 @@ async fn lookup_domain_with_client(client: &reqwest::Client, domain: &str) -> Re
     })
 }
 
-pub async fn refresh_domain_record(
+async fn refresh_domain_record_with_client(
     db: &DatabaseConnection,
+    client: &reqwest::Client,
     record: domain::Model,
 ) -> Result<bool, String> {
-    let lookup = lookup_domain(&record.name).await?;
+    let lookup = lookup_domain_with_client(client, &record.name).await?;
     let mut changed = false;
     let mut model: domain::ActiveModel = record.clone().into();
 
@@ -119,20 +120,25 @@ pub async fn refresh_domain_record(
     Ok(changed)
 }
 
-pub async fn refresh_all_domains(db: &DatabaseConnection) -> RefreshDomainsSummary {
-    refresh_domains(db, None).await
+pub async fn refresh_all_domains(
+    db: &DatabaseConnection,
+    delay_ms: u64,
+) -> RefreshDomainsSummary {
+    refresh_domains(db, None, delay_ms).await
 }
 
 pub async fn refresh_selected_domains(
     db: &DatabaseConnection,
     ids: &[Uuid],
+    delay_ms: u64,
 ) -> RefreshDomainsSummary {
-    refresh_domains(db, Some(ids)).await
+    refresh_domains(db, Some(ids), delay_ms).await
 }
 
 async fn refresh_domains(
     db: &DatabaseConnection,
     ids: Option<&[Uuid]>,
+    delay_ms: u64,
 ) -> RefreshDomainsSummary {
     let mut query = domain::Entity::find();
     if let Some(ids) = ids {
@@ -156,13 +162,29 @@ async fn refresh_domains(
     let mut attempted = 0;
     let mut updated = 0;
     let mut errors = Vec::new();
+    let client = match build_client() {
+        Ok(client) => client,
+        Err(err) => {
+            return RefreshDomainsSummary {
+                total_domains,
+                attempted: 0,
+                updated: 0,
+                failed: total_domains.max(1),
+                errors: vec![err],
+            };
+        }
+    };
 
-    for record in domains {
+    for (index, record) in domains.into_iter().enumerate() {
         attempted += 1;
-        match refresh_domain_record(db, record).await {
+        match refresh_domain_record_with_client(db, &client, record).await {
             Ok(true) => updated += 1,
             Ok(false) => {}
             Err(err) => errors.push(err),
+        }
+
+        if delay_ms > 0 && index + 1 < total_domains {
+            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
         }
     }
 

@@ -25,6 +25,7 @@ pub struct AppState {
     pub db: DatabaseConnection,
     pub currency: CurrencyService,
     pub whois_refresh: WhoisRefreshService,
+    pub whois_request_delay_ms: u64,
 }
 
 #[tokio::main]
@@ -51,10 +52,13 @@ async fn main() {
         db: db.clone(),
         currency: currency_svc,
         whois_refresh: whois_refresh_svc.clone(),
+        whois_request_delay_ms: config.whois_request_delay_ms,
     };
 
     {
         let refresh_db = db.clone();
+        let refresh_currency = state.currency.clone();
+        let whois_request_delay_ms = config.whois_request_delay_ms;
         let mut refresh_rx = whois_refresh_svc.subscribe();
         tokio::spawn(async move {
             loop {
@@ -84,7 +88,14 @@ async fn main() {
                             refresh_interval_hours
                         );
 
-                        let summary = services::whois::refresh_all_domains(&refresh_db).await;
+                        if let Err(err) = services::currency::refresh_cached_rates(&refresh_db, &refresh_currency).await {
+                            tracing::warn!("Currency refresh failed before WHOIS refresh: {}", err);
+                        }
+
+                        let summary = services::whois::refresh_all_domains(
+                            &refresh_db,
+                            whois_request_delay_ms,
+                        ).await;
                         if summary.failed > 0 {
                             tracing::warn!(
                                 "WHOIS refresh finished: updated={}, failed={}, total={}",

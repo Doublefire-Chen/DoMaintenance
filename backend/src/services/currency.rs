@@ -29,13 +29,7 @@ pub async fn init(db: &DatabaseConnection) -> CurrencyService {
 
     // Try to load from external API first
     if let Ok(rates) = fetch_rates_from_api().await {
-        {
-            let mut cache = cached.write().await;
-            cache.rates = rates.clone();
-            cache.fetched_at = Utc::now();
-        }
-        // Persist to DB
-        persist_rates(db, &rates).await;
+        apply_rates_update(&cached, db, rates).await;
     } else {
         // Fallback: load from DB
         if let Ok(rates) = load_rates_from_db(db).await {
@@ -57,12 +51,7 @@ pub async fn init(db: &DatabaseConnection) -> CurrencyService {
             interval.tick().await;
             tracing::info!("Refreshing exchange rates...");
             if let Ok(rates) = fetch_rates_from_api().await {
-                {
-                    let mut cache = cached_clone.write().await;
-                    cache.rates = rates.clone();
-                    cache.fetched_at = Utc::now();
-                }
-                persist_rates(&db_clone, &rates).await;
+                apply_rates_update(&cached_clone, &db_clone, rates).await;
                 tracing::info!("Exchange rates refreshed successfully");
             } else {
                 tracing::warn!("Failed to refresh exchange rates, using cached values");
@@ -71,6 +60,15 @@ pub async fn init(db: &DatabaseConnection) -> CurrencyService {
     });
 
     cached
+}
+
+pub async fn refresh_cached_rates(
+    db: &DatabaseConnection,
+    cached: &CurrencyService,
+) -> Result<(), reqwest::Error> {
+    let rates = fetch_rates_from_api().await?;
+    apply_rates_update(cached, db, rates).await;
+    Ok(())
 }
 
 fn default_rates() -> HashMap<String, Decimal> {
@@ -128,6 +126,19 @@ async fn persist_rates(db: &DatabaseConnection, rates: &HashMap<String, Decimal>
         };
         let _ = model.insert(db).await;
     }
+}
+
+async fn apply_rates_update(
+    cached: &CurrencyService,
+    db: &DatabaseConnection,
+    rates: HashMap<String, Decimal>,
+) {
+    {
+        let mut cache = cached.write().await;
+        cache.rates = rates.clone();
+        cache.fetched_at = Utc::now();
+    }
+    persist_rates(db, &rates).await;
 }
 
 async fn load_rates_from_db(db: &DatabaseConnection) -> Result<HashMap<String, Decimal>, sea_orm::DbErr> {

@@ -202,10 +202,19 @@ pub async fn refresh_all(
     State(state): State<crate::AppState>,
     Json(payload): Json<RefreshDomainsPayload>,
 ) -> Result<Json<crate::services::whois::RefreshDomainsSummary>, AppError> {
+    if let Err(err) = crate::services::currency::refresh_cached_rates(&state.db, &state.currency).await {
+        tracing::warn!("Currency refresh failed before WHOIS refresh: {}", err);
+    }
+
     let summary = if let Some(domain_ids) = payload.domain_ids {
-        crate::services::whois::refresh_selected_domains(&state.db, &domain_ids).await
+        crate::services::whois::refresh_selected_domains(
+            &state.db,
+            &domain_ids,
+            state.whois_request_delay_ms,
+        )
+        .await
     } else {
-        crate::services::whois::refresh_all_domains(&state.db).await
+        crate::services::whois::refresh_all_domains(&state.db, state.whois_request_delay_ms).await
     };
 
     if summary.failed > 0 {
