@@ -1,12 +1,13 @@
-import type { PublicDomain } from '../types';
+import type { DateTimeDisplayFormat, PublicDomain } from '../types';
 import ExpirationBar from './ExpirationBar';
 import MaskedDomain from './MaskedDomain';
 import { formatCurrencyAmount } from '../utils/currency';
-import { formatRegisteredDuration } from '../utils/date';
+import { formatDateTime, formatRegisteredDuration } from '../utils/date';
 
 interface DomainTableProps {
   domains: PublicDomain[];
   displayCurrency?: string;
+  dateTimeFormat?: DateTimeDisplayFormat;
   showActions?: boolean;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
@@ -15,6 +16,7 @@ interface DomainTableProps {
 export default function DomainTable({
   domains,
   displayCurrency,
+  dateTimeFormat = 'slash_utc_offset',
   showActions,
   onEdit,
   onDelete,
@@ -53,7 +55,7 @@ export default function DomainTable({
                   <MaskedDomain name={domain.name} />
                   {domain.registration_date && domain.registered_days != null && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Registered {domain.registration_date} • {formatRegisteredDuration(domain.registered_days)} ago
+                      Registered {formatDateTime(domain.registration_date, dateTimeFormat) || domain.registration_date} • {formatRegisteredDuration(domain.registered_days)} ago
                     </div>
                   )}
                 </div>
@@ -62,11 +64,16 @@ export default function DomainTable({
                 {domain.registrar?.name || '\u2014'}
               </td>
               <td className="py-3 px-4">
-                <ExpirationBar
-                  remainingDays={domain.remaining_days}
-                  renewalDays={domain.renewal_days}
-                  status={domain.status}
-                />
+                <div>
+                  <ExpirationBar
+                    remainingDays={domain.remaining_days}
+                    renewalDays={domain.renewal_days}
+                    status={domain.status}
+                  />
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Expires {formatDateTime(domain.expiration_date, dateTimeFormat) || domain.expiration_date}
+                  </div>
+                </div>
               </td>
               <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
                 {domain.renew_price != null ? (

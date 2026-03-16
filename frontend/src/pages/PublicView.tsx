@@ -159,6 +159,7 @@ export default function PublicView() {
               <DomainTable
                 domains={data.domains}
                 displayCurrency={data.currency_totals.display_currency}
+                dateTimeFormat={data.date_time_display_format}
               />
             </div>
           </>

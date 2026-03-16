@@ -12,8 +12,8 @@ use crate::errors::AppError;
 pub struct DomainPayload {
     pub name: String,
     pub registrar_id: Option<Uuid>,
-    pub registration_date: Option<chrono::NaiveDate>,
-    pub expiration_date: chrono::NaiveDate,
+    pub registration_date: Option<chrono::DateTime<chrono::FixedOffset>>,
+    pub expiration_date: chrono::DateTime<chrono::FixedOffset>,
     pub renewal_days: i32,
     pub renew_price: Option<Decimal>,
     pub currency: String,

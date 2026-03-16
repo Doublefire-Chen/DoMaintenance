@@ -1,4 +1,4 @@
-use chrono::{NaiveDate, Utc};
+use chrono::{DateTime, FixedOffset, NaiveDate, Utc};
 use reqwest::header::ACCEPT;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use serde::Serialize;
@@ -8,8 +8,8 @@ use crate::entities::domain;
 
 #[derive(Serialize, Debug)]
 pub struct DomainLookup {
-    pub expiration_date: Option<NaiveDate>,
-    pub registration_date: Option<NaiveDate>,
+    pub expiration_date: Option<DateTime<FixedOffset>>,
+    pub registration_date: Option<DateTime<FixedOffset>>,
 }
 
 #[derive(Serialize, Debug)]
@@ -30,6 +30,19 @@ fn build_client() -> Result<reqwest::Client, String> {
         ))
         .build()
         .map_err(|e| format!("Failed to build RDAP client: {}", e))
+}
+
+fn parse_rdap_event_date(date_str: &str) -> Option<DateTime<FixedOffset>> {
+    DateTime::parse_from_rfc3339(date_str)
+        .ok()
+        .or_else(|| {
+            NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+                .ok()
+                .and_then(|date| date.and_hms_opt(0, 0, 0))
+                .and_then(|date_time| FixedOffset::east_opt(0).map(|offset| {
+                    DateTime::<FixedOffset>::from_naive_utc_and_offset(date_time, offset)
+                }))
+        })
 }
 
 pub async fn lookup_domain(domain: &str) -> Result<DomainLookup, String> {
@@ -66,10 +79,7 @@ async fn lookup_domain_with_client(client: &reqwest::Client, domain: &str) -> Re
             let date_str = event.get("eventDate").and_then(|d| d.as_str());
 
             if let (Some(action), Some(date_str)) = (action, date_str) {
-                // eventDate is typically ISO 8601: "2025-12-31T00:00:00Z"
-                let date = date_str
-                    .get(..10)
-                    .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+                let date = parse_rdap_event_date(date_str);
 
                 match action {
                     "expiration" => expiration_date = date,

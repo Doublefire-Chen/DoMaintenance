@@ -1,3 +1,5 @@
+export type DateTimeDisplayFormat = 'slash_utc_offset' | 'iso_utc_offset' | 'locale_short';
+
 export interface Registrar {
   id: string;
   name: string;
@@ -36,6 +38,7 @@ export interface PublicDomain {
   registrar: Registrar | null;
   tags: Tag[];
   registration_date: string | null;
+  expiration_date: string;
   registered_days: number | null;
   remaining_days: number;
   renewal_days: number;
@@ -52,6 +55,7 @@ export interface PublicDomainsResponse {
     total: string | number;
   };
   available_currencies: string[];
+  date_time_display_format: DateTimeDisplayFormat;
 }
 
 export interface LoginRequest {

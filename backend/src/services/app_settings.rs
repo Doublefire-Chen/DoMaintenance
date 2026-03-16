@@ -11,20 +11,28 @@ use crate::entities::{app_setting, user};
 
 const ALLOW_REGISTER_SETTING_KEY: &str = "allow_register";
 const WHOIS_REQUEST_DELAY_SETTING_KEY: &str = "whois_request_delay_ms";
+const DATE_TIME_DISPLAY_FORMAT_SETTING_KEY: &str = "date_time_display_format";
 
 pub const DEFAULT_WHOIS_REQUEST_DELAY_MS: u64 = 60_000;
+pub const DEFAULT_DATE_TIME_DISPLAY_FORMAT: &str = "slash_utc_offset";
 
 #[derive(Clone)]
 pub struct AppSettingsService {
     allow_register: Arc<RwLock<bool>>,
     whois_request_delay_ms: Arc<RwLock<u64>>,
+    date_time_display_format: Arc<RwLock<String>>,
 }
 
 impl AppSettingsService {
-    pub fn new(initial_allow_register: bool, initial_whois_request_delay_ms: u64) -> Self {
+    pub fn new(
+        initial_allow_register: bool,
+        initial_whois_request_delay_ms: u64,
+        initial_date_time_display_format: String,
+    ) -> Self {
         Self {
             allow_register: Arc::new(RwLock::new(initial_allow_register)),
             whois_request_delay_ms: Arc::new(RwLock::new(initial_whois_request_delay_ms)),
+            date_time_display_format: Arc::new(RwLock::new(initial_date_time_display_format)),
         }
     }
 
@@ -36,12 +44,20 @@ impl AppSettingsService {
         *self.whois_request_delay_ms.read().await
     }
 
+    pub async fn date_time_display_format(&self) -> String {
+        self.date_time_display_format.read().await.clone()
+    }
+
     pub async fn set_allow_register(&self, allow_register: bool) {
         *self.allow_register.write().await = allow_register;
     }
 
     pub async fn set_whois_request_delay_ms(&self, delay_ms: u64) {
         *self.whois_request_delay_ms.write().await = delay_ms;
+    }
+
+    pub async fn set_date_time_display_format(&self, format: String) {
+        *self.date_time_display_format.write().await = normalize_date_time_display_format(&format);
     }
 }
 
@@ -63,6 +79,13 @@ pub async fn load_whois_request_delay_ms(db: &DatabaseConnection) -> u64 {
         .unwrap_or(DEFAULT_WHOIS_REQUEST_DELAY_MS)
 }
 
+pub async fn load_date_time_display_format(db: &DatabaseConnection) -> String {
+    load_setting_value(db, DATE_TIME_DISPLAY_FORMAT_SETTING_KEY)
+        .await
+        .map(|value| normalize_date_time_display_format(&value))
+        .unwrap_or_else(|| DEFAULT_DATE_TIME_DISPLAY_FORMAT.to_string())
+}
+
 pub async fn save_allow_register(
     db: &DatabaseConnection,
     allow_register: bool,
@@ -75,6 +98,25 @@ pub async fn save_whois_request_delay_ms(
     delay_ms: u64,
 ) -> Result<(), sea_orm::DbErr> {
     save_setting(db, WHOIS_REQUEST_DELAY_SETTING_KEY, delay_ms.to_string()).await
+}
+
+pub async fn save_date_time_display_format(
+    db: &DatabaseConnection,
+    format: &str,
+) -> Result<(), sea_orm::DbErr> {
+    save_setting(
+        db,
+        DATE_TIME_DISPLAY_FORMAT_SETTING_KEY,
+        normalize_date_time_display_format(format),
+    )
+    .await
+}
+
+pub fn normalize_date_time_display_format(format: &str) -> String {
+    match format {
+        "slash_utc_offset" | "iso_utc_offset" | "locale_short" => format.to_string(),
+        _ => DEFAULT_DATE_TIME_DISPLAY_FORMAT.to_string(),
+    }
 }
 
 async fn load_bool_setting(db: &DatabaseConnection, key: &str) -> Option<bool> {

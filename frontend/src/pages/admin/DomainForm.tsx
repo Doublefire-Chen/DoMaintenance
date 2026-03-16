@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/client';
 import type { Registrar, Tag } from '../../types';
 import { currencyOptions, normalizeCurrencyCode } from '../../utils/currency';
+import { fromDateTimeLocalInputValue, toDateTimeLocalInputValue } from '../../utils/date';
 
 interface DomainFormData {
   name: string;
@@ -56,8 +57,8 @@ export default function DomainForm() {
         setForm({
           name: d.name,
           registrar_id: d.registrar_id || '',
-          registration_date: d.registration_date || '',
-          expiration_date: d.expiration_date,
+          registration_date: toDateTimeLocalInputValue(d.registration_date),
+          expiration_date: toDateTimeLocalInputValue(d.expiration_date),
           renewal_days: d.renewal_days,
           renew_price: d.renew_price?.toString() || '',
           currency: normalizeCurrencyCode(d.currency),
@@ -82,10 +83,10 @@ export default function DomainForm() {
       const updates: Partial<DomainFormData> = {};
 
       if (data.expiration_date) {
-        updates.expiration_date = data.expiration_date;
+        updates.expiration_date = toDateTimeLocalInputValue(data.expiration_date);
       }
       if (data.registration_date) {
-        updates.registration_date = data.registration_date;
+        updates.registration_date = toDateTimeLocalInputValue(data.registration_date);
       }
 
       if (Object.keys(updates).length > 0) {
@@ -113,8 +114,8 @@ export default function DomainForm() {
     const payload = {
       name: form.name,
       registrar_id: form.registrar_id || null,
-      registration_date: form.registration_date || null,
-      expiration_date: form.expiration_date,
+      registration_date: fromDateTimeLocalInputValue(form.registration_date),
+      expiration_date: fromDateTimeLocalInputValue(form.expiration_date),
       renewal_days: form.renewal_days,
       renew_price: form.renew_price ? parseFloat(form.renew_price) : null,
       currency: normalizeCurrencyCode(form.currency),
@@ -205,9 +206,9 @@ export default function DomainForm() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registration Date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registration Time</label>
               <input
-                type="date"
+                type="datetime-local"
                 value={form.registration_date}
                 onChange={(e) => setForm({ ...form, registration_date: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -217,9 +218,9 @@ export default function DomainForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expiration Date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expiration Time</label>
               <input
-                type="date"
+                type="datetime-local"
                 value={form.expiration_date}
                 onChange={(e) => setForm({ ...form, expiration_date: e.target.value })}
                 required

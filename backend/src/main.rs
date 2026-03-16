@@ -48,8 +48,13 @@ async fn main() {
     let initial_allow_register = services::app_settings::load_allow_register(&db).await;
     let initial_whois_request_delay_ms =
         services::app_settings::load_whois_request_delay_ms(&db).await;
-    let app_settings_svc =
-        AppSettingsService::new(initial_allow_register, initial_whois_request_delay_ms);
+    let initial_date_time_display_format =
+        services::app_settings::load_date_time_display_format(&db).await;
+    let app_settings_svc = AppSettingsService::new(
+        initial_allow_register,
+        initial_whois_request_delay_ms,
+        initial_date_time_display_format,
+    );
     let initial_whois_refresh_hours = services::whois_refresh::load_interval_hours(&db).await;
     let whois_refresh_svc = WhoisRefreshService::new(initial_whois_refresh_hours);
 

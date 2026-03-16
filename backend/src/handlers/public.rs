@@ -18,7 +18,8 @@ pub struct PublicDomain {
     pub name: String,
     pub registrar: Option<registrar::Model>,
     pub tags: Vec<tag::Model>,
-    pub registration_date: Option<chrono::NaiveDate>,
+    pub registration_date: Option<chrono::DateTime<chrono::FixedOffset>>,
+    pub expiration_date: chrono::DateTime<chrono::FixedOffset>,
     pub registered_days: Option<i64>,
     pub remaining_days: i64,
     pub renewal_days: i32,
@@ -39,6 +40,7 @@ pub struct PublicResponse {
     pub domains: Vec<PublicDomain>,
     pub currency_totals: CurrencyTotals,
     pub available_currencies: Vec<String>,
+    pub date_time_display_format: String,
 }
 
 fn mask_domain(name: &str, level: i16) -> String {
@@ -90,7 +92,8 @@ pub async fn get_domains(
 ) -> Result<Json<PublicResponse>, AppError> {
     let display_currency =
         currency::normalize_supported_currency(query.display_currency.as_deref());
-    let today = Utc::now().date_naive();
+    let now = Utc::now().fixed_offset();
+    let today = now.date_naive();
 
     let domains = domain::Entity::find().all(&state.db).await?;
     let rates = state.currency.read().await;
@@ -106,9 +109,9 @@ pub async fn get_domains(
         };
         let tags = d.find_related(tag::Entity).all(&state.db).await?;
 
-        let remaining_days = (d.expiration_date - today).num_days();
+        let remaining_days = (d.expiration_date.date_naive() - today).num_days();
         let registered_days = d.registration_date.map(|registration_date| {
-            (today - registration_date).num_days().max(0)
+            (today - registration_date.date_naive()).num_days().max(0)
         });
         let status = calculate_status(remaining_days);
         let masked_name = mask_domain(&d.name, d.masking_level);
@@ -126,6 +129,7 @@ pub async fn get_domains(
             registrar: reg,
             tags,
             registration_date: d.registration_date,
+            expiration_date: d.expiration_date,
             registered_days,
             remaining_days,
             renewal_days: d.renewal_days,
@@ -137,6 +141,7 @@ pub async fn get_domains(
     }
 
     let available = currency::available_currencies(&rates.rates);
+    let date_time_display_format = state.app_settings.date_time_display_format().await;
 
     Ok(Json(PublicResponse {
         domains: public_domains,
@@ -145,6 +150,7 @@ pub async fn get_domains(
             total,
         },
         available_currencies: available,
+        date_time_display_format,
     }))
 }
 

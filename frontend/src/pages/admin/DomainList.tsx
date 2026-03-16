@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../api/client';
-import type { Domain } from '../../types';
+import type { DateTimeDisplayFormat, Domain } from '../../types';
 import { formatCurrencyAmount } from '../../utils/currency';
-import { daysSince, formatRegisteredDuration } from '../../utils/date';
+import { daysSince, formatDateTime, formatRegisteredDuration } from '../../utils/date';
 
 export default function DomainList() {
   const [domains, setDomains] = useState<Domain[]>([]);
+  const [dateTimeFormat, setDateTimeFormat] = useState<DateTimeDisplayFormat>('slash_utc_offset');
   const [selectedDomainIds, setSelectedDomainIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshingWhois, setRefreshingWhois] = useState(false);
@@ -30,6 +31,9 @@ export default function DomainList() {
 
   useEffect(() => {
     fetchDomains();
+    api.get('/api/admin/settings')
+      .then((res) => setDateTimeFormat(res.data.date_time_display_format || 'slash_utc_offset'))
+      .catch(console.error);
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -196,14 +200,16 @@ export default function DomainList() {
                   <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
                     {domain.registration_date ? (
                       <div>
-                        <div>{domain.registration_date}</div>
+                        <div>{formatDateTime(domain.registration_date, dateTimeFormat) || domain.registration_date}</div>
                         <div className="text-xs text-gray-400">
                           {formatRegisteredDuration(daysSince(domain.registration_date))}
                         </div>
                       </div>
                     ) : '\u2014'}
                   </td>
-                  <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{domain.expiration_date}</td>
+                  <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                    {formatDateTime(domain.expiration_date, dateTimeFormat) || domain.expiration_date}
+                  </td>
                   <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
                     {domain.renew_price != null
                       ? formatCurrencyAmount(domain.renew_price, domain.currency)

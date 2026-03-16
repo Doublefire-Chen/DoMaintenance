@@ -1,10 +1,22 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client';
+import type { DateTimeDisplayFormat } from '../../types';
+import { getDateTimeFormatPreview } from '../../utils/date';
+
+const DATE_TIME_FORMAT_OPTIONS: Array<{
+  value: DateTimeDisplayFormat;
+  label: (preview: string) => string;
+}> = [
+  { value: 'slash_utc_offset', label: (preview) => preview },
+  { value: 'iso_utc_offset', label: (preview) => preview },
+  { value: 'locale_short', label: (preview) => preview },
+];
 
 export default function Settings() {
   const [allowRegister, setAllowRegister] = useState(false);
   const [refreshIntervalHours, setRefreshIntervalHours] = useState('24');
   const [requestDelaySeconds, setRequestDelaySeconds] = useState('60');
+  const [dateTimeFormat, setDateTimeFormat] = useState<DateTimeDisplayFormat>('slash_utc_offset');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -15,6 +27,7 @@ export default function Settings() {
         setAllowRegister(res.data.allow_register === true);
         setRefreshIntervalHours(String(res.data.whois_refresh_interval_hours));
         setRequestDelaySeconds(String(Math.floor((res.data.whois_request_delay_ms ?? 0) / 1000)));
+        setDateTimeFormat(res.data.date_time_display_format || 'slash_utc_offset');
       })
       .catch((err) => {
         console.error(err);
@@ -34,10 +47,12 @@ export default function Settings() {
         allow_register: allowRegister,
         whois_refresh_interval_hours: intervalHours,
         whois_request_delay_ms: delaySeconds * 1000,
+        date_time_display_format: dateTimeFormat,
       });
       setAllowRegister(res.data.allow_register === true);
       setRefreshIntervalHours(String(res.data.whois_refresh_interval_hours));
       setRequestDelaySeconds(String(Math.floor((res.data.whois_request_delay_ms ?? 0) / 1000)));
+      setDateTimeFormat(res.data.date_time_display_format || 'slash_utc_offset');
       setMessage(
         intervalHours > 0
           ? `Settings saved. Auto refresh runs every ${intervalHours} hour(s).`
@@ -126,6 +141,25 @@ export default function Settings() {
           </div>
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             Applied to both manual refresh and scheduled refresh to avoid RDAP throttling.
+          </p>
+
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-5 mb-1">
+            Date and Time Display Format
+          </label>
+          <select
+            value={dateTimeFormat}
+            onChange={(e) => setDateTimeFormat(e.target.value as DateTimeDisplayFormat)}
+            disabled={loading}
+            className="w-full max-w-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            {DATE_TIME_FORMAT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label(getDateTimeFormatPreview(option.value))}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Controls how registration and expiration timestamps are shown across the app, using the viewer&apos;s local timezone.
           </p>
 
           <div className="mt-5">
