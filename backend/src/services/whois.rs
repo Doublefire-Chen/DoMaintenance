@@ -1,7 +1,9 @@
-use chrono::{DateTime, FixedOffset, NaiveDate, Utc};
+use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, Utc};
 use reqwest::header::ACCEPT;
+use reqwest::StatusCode;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use serde::Serialize;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use uuid::Uuid;
 
 use crate::entities::domain;
@@ -45,12 +47,27 @@ fn parse_rdap_event_date(date_str: &str) -> Option<DateTime<FixedOffset>> {
         })
 }
 
+fn domain_tld(domain: &str) -> Option<&str> {
+    domain.rsplit('.').next()
+}
+
 pub async fn lookup_domain(domain: &str) -> Result<DomainLookup, String> {
     let client = build_client()?;
     lookup_domain_with_client(&client, domain).await
 }
 
 async fn lookup_domain_with_client(client: &reqwest::Client, domain: &str) -> Result<DomainLookup, String> {
+    if matches!(domain_tld(domain), Some("mk")) {
+        return lookup_mk_domain(domain).await;
+    }
+
+    lookup_rdap_domain_with_client(client, domain).await
+}
+
+async fn lookup_rdap_domain_with_client(
+    client: &reqwest::Client,
+    domain: &str,
+) -> Result<DomainLookup, String> {
     let url = format!("https://rdap.org/domain/{}", domain);
 
     let resp = client
@@ -62,7 +79,22 @@ async fn lookup_domain_with_client(client: &reqwest::Client, domain: &str) -> Re
         .map_err(|e| format!("RDAP request failed: {}", e))?;
 
     if !resp.status().is_success() {
-        return Err(format!("RDAP returned status {}", resp.status()));
+        let status = resp.status();
+        let final_host = resp.url().host_str().unwrap_or_default().to_string();
+
+        if status == StatusCode::NOT_FOUND && final_host == "rdap.org" {
+            let tld = domain_tld(domain).unwrap_or(domain);
+            return Err(format!(
+                "No authoritative RDAP service is published for .{}; enter dates manually for {}",
+                tld, domain
+            ));
+        }
+
+        if status == StatusCode::NOT_FOUND {
+            return Err(format!("Domain not found in registry RDAP: {}", domain));
+        }
+
+        return Err(format!("RDAP returned status {}", status));
     }
 
     let body: serde_json::Value = resp
@@ -94,6 +126,89 @@ async fn lookup_domain_with_client(client: &reqwest::Client, domain: &str) -> Re
         expiration_date,
         registration_date,
     })
+}
+
+fn parse_mk_datetime(date_str: &str) -> Option<DateTime<FixedOffset>> {
+    NaiveDateTime::parse_from_str(date_str, "%d.%m.%Y %H:%M:%S")
+        .ok()
+        .and_then(|date_time| {
+            FixedOffset::east_opt(0).map(|offset| {
+                DateTime::<FixedOffset>::from_naive_utc_and_offset(date_time, offset)
+            })
+        })
+}
+
+fn parse_mk_date(date_str: &str) -> Option<DateTime<FixedOffset>> {
+    NaiveDate::parse_from_str(date_str, "%d.%m.%Y")
+        .ok()
+        .and_then(|date| date.and_hms_opt(0, 0, 0))
+        .and_then(|date_time| {
+            FixedOffset::east_opt(0).map(|offset| {
+                DateTime::<FixedOffset>::from_naive_utc_and_offset(date_time, offset)
+            })
+        })
+}
+
+fn parse_mk_whois_response(domain: &str, body: &str) -> Result<DomainLookup, String> {
+    let lowered = body.to_ascii_lowercase();
+    if lowered.contains("not found")
+        || lowered.contains("no entries found")
+        || lowered.contains("no match")
+    {
+        return Err(format!("Domain not found in .mk WHOIS: {}", domain));
+    }
+
+    let mut registration_date = None;
+    let mut expiration_date = None;
+
+    for line in body.lines() {
+        let trimmed = line.trim();
+
+        if let Some(value) = trimmed.strip_prefix("registered:") {
+            registration_date = parse_mk_datetime(value.trim());
+        } else if let Some(value) = trimmed.strip_prefix("expire:") {
+            expiration_date = parse_mk_date(value.trim());
+        }
+    }
+
+    if registration_date.is_none() && expiration_date.is_none() {
+        return Err(format!(
+            "Failed to parse .mk WHOIS response for {}; required date fields were not found",
+            domain
+        ));
+    }
+
+    Ok(DomainLookup {
+        expiration_date,
+        registration_date,
+    })
+}
+
+async fn lookup_mk_domain(domain: &str) -> Result<DomainLookup, String> {
+    let mut stream = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        tokio::net::TcpStream::connect(("whois.marnet.mk", 43)),
+    )
+    .await
+    .map_err(|_| format!("WHOIS request timed out for {}", domain))?
+    .map_err(|e| format!("Failed to connect to .mk WHOIS for {}: {}", domain, e))?;
+
+    stream
+        .write_all(format!("{}\r\n", domain).as_bytes())
+        .await
+        .map_err(|e| format!("Failed to send .mk WHOIS query for {}: {}", domain, e))?;
+
+    let mut body = String::new();
+    stream
+        .read_to_string(&mut body)
+        .await
+        .map_err(|e| format!("Failed to read .mk WHOIS response for {}: {}", domain, e))?;
+
+    if body.trim().is_empty() {
+        return Err(format!("Empty .mk WHOIS response for {}", domain));
+    }
+
+    parse_mk_whois_response(domain, &body)
 }
 
 async fn refresh_domain_record_with_client(
