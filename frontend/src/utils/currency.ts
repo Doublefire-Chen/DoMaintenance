@@ -17,6 +17,8 @@ export const currencyOptions: CurrencyOption[] = [
   { value: 'AUD', label: '🇦🇺 $ (Australian Dollar)' },
 ];
 
+export const supportedCurrencyCodes = currencyOptions.map(({ value }) => value);
+
 export function normalizeCurrencyCode(value: string): string {
   return value.trim().toUpperCase().slice(0, 3);
 }
@@ -49,4 +51,8 @@ export function formatCurrencyOption(currency: string): string {
   const option = currencyOptions.find(({ value }) => value === normalizedCurrency);
 
   return option ? option.label : normalizedCurrency;
+}
+
+export function isSupportedCurrency(currency: string): boolean {
+  return supportedCurrencyCodes.includes(normalizeCurrencyCode(currency));
 }

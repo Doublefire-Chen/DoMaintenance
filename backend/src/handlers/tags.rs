@@ -1,6 +1,6 @@
 use axum::{extract::{Path, State}, Json};
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -14,25 +14,25 @@ pub struct TagPayload {
 }
 
 pub async fn list(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
 ) -> Result<Json<Vec<tag::Model>>, AppError> {
-    let tags = tag::Entity::find().all(&db).await?;
+    let tags = tag::Entity::find().all(&state.db).await?;
     Ok(Json(tags))
 }
 
 pub async fn get(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<tag::Model>, AppError> {
     let t = tag::Entity::find_by_id(id)
-        .one(&db)
+        .one(&state.db)
         .await?
         .ok_or(AppError::NotFound("Tag not found".to_string()))?;
     Ok(Json(t))
 }
 
 pub async fn create(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Json(payload): Json<TagPayload>,
 ) -> Result<Json<tag::Model>, AppError> {
     let now = Utc::now().fixed_offset();
@@ -43,17 +43,17 @@ pub async fn create(
         created_at: Set(now),
         updated_at: Set(now),
     };
-    let result = model.insert(&db).await?;
+    let result = model.insert(&state.db).await?;
     Ok(Json(result))
 }
 
 pub async fn update(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Path(id): Path<Uuid>,
     Json(payload): Json<TagPayload>,
 ) -> Result<Json<tag::Model>, AppError> {
     let t = tag::Entity::find_by_id(id)
-        .one(&db)
+        .one(&state.db)
         .await?
         .ok_or(AppError::NotFound("Tag not found".to_string()))?;
 
@@ -62,15 +62,15 @@ pub async fn update(
     model.color = Set(payload.color);
     model.updated_at = Set(Utc::now().fixed_offset());
 
-    let result = model.update(&db).await?;
+    let result = model.update(&state.db).await?;
     Ok(Json(result))
 }
 
 pub async fn delete(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let result = tag::Entity::delete_by_id(id).exec(&db).await?;
+    let result = tag::Entity::delete_by_id(id).exec(&state.db).await?;
     if result.rows_affected == 0 {
         return Err(AppError::NotFound("Tag not found".to_string()));
     }

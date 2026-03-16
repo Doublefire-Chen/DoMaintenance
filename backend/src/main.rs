@@ -18,8 +18,14 @@ mod middleware;
 mod services;
 
 use services::currency::CurrencyService;
+use services::whois_refresh::WhoisRefreshService;
 
-type AppState = (DatabaseConnection, CurrencyService);
+#[derive(Clone)]
+pub struct AppState {
+    pub db: DatabaseConnection,
+    pub currency: CurrencyService,
+    pub whois_refresh: WhoisRefreshService,
+}
 
 #[tokio::main]
 async fn main() {
@@ -37,8 +43,67 @@ async fn main() {
     let db = db::connect(&config).await;
 
     let currency_svc = services::currency::init(&db).await;
+    let initial_whois_refresh_hours =
+        services::whois_refresh::load_interval_hours(&db, config.whois_refresh_interval_hours).await;
+    let whois_refresh_svc = WhoisRefreshService::new(initial_whois_refresh_hours);
 
-    let state: AppState = (db.clone(), currency_svc);
+    let state = AppState {
+        db: db.clone(),
+        currency: currency_svc,
+        whois_refresh: whois_refresh_svc.clone(),
+    };
+
+    {
+        let refresh_db = db.clone();
+        let mut refresh_rx = whois_refresh_svc.subscribe();
+        tokio::spawn(async move {
+            loop {
+                let refresh_interval_hours = *refresh_rx.borrow();
+                if refresh_interval_hours == 0 {
+                    tracing::info!("WHOIS auto refresh disabled; waiting for settings update");
+                    if refresh_rx.changed().await.is_err() {
+                        break;
+                    }
+                    continue;
+                }
+
+                tracing::info!(
+                    "WHOIS auto refresh scheduled in {} hour(s)",
+                    refresh_interval_hours
+                );
+
+                tokio::select! {
+                    changed = refresh_rx.changed() => {
+                        if changed.is_err() {
+                            break;
+                        }
+                    }
+                    _ = tokio::time::sleep(std::time::Duration::from_secs(refresh_interval_hours * 3600)) => {
+                        tracing::info!(
+                            "Refreshing WHOIS data for all domains on {} hour interval",
+                            refresh_interval_hours
+                        );
+
+                        let summary = services::whois::refresh_all_domains(&refresh_db).await;
+                        if summary.failed > 0 {
+                            tracing::warn!(
+                                "WHOIS refresh finished: updated={}, failed={}, total={}",
+                                summary.updated,
+                                summary.failed,
+                                summary.total_domains
+                            );
+                        } else {
+                            tracing::info!(
+                                "WHOIS refresh finished: updated={}, total={}",
+                                summary.updated,
+                                summary.total_domains
+                            );
+                        }
+                    }
+                }
+            }
+        });
+    }
 
     let frontend_origin = std::env::var("FRONTEND_URL")
         .unwrap_or_else(|_| "http://localhost:5173".to_string());
@@ -80,6 +145,18 @@ async fn main() {
         .route("/api/admin/domains", get(handlers::domains::list))
         .route("/api/admin/domains", post(handlers::domains::create))
         .route(
+            "/api/admin/domains/refresh-whois",
+            post(handlers::domains::refresh_all),
+        )
+        .route(
+            "/api/admin/settings/whois-refresh",
+            get(handlers::settings::get_whois_refresh),
+        )
+        .route(
+            "/api/admin/settings/whois-refresh",
+            put(handlers::settings::update_whois_refresh),
+        )
+        .route(
             "/api/admin/whois/:domain",
             get(handlers::domains::lookup),
         )
@@ -112,7 +189,7 @@ async fn main() {
         .route("/api/admin/tags/:id", put(handlers::tags::update))
         .route("/api/admin/tags/:id", delete(handlers::tags::delete))
         .layer(axum_middleware::from_fn_with_state(
-            state.0.clone(),
+            state.db.clone(),
             middleware::auth::require_auth,
         ));
 

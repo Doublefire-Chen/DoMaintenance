@@ -19,6 +19,14 @@ export default function DomainTable({
   onEdit,
   onDelete,
 }: DomainTableProps) {
+  const shouldShowConvertedPrice = (domainCurrency: string) => {
+    if (!displayCurrency) {
+      return false;
+    }
+
+    return displayCurrency.toUpperCase() !== domainCurrency.toUpperCase();
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
@@ -64,7 +72,7 @@ export default function DomainTable({
                 {domain.renew_price != null ? (
                   <span>
                     {formatCurrencyAmount(domain.renew_price, domain.currency)}
-                    {domain.converted_price != null && (
+                    {domain.converted_price != null && shouldShowConvertedPrice(domain.currency) && (
                       <span className="text-xs text-gray-400 ml-1">
                         \u2248 {formatCurrencyAmount(
                           domain.converted_price,

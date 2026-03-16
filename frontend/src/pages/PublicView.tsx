@@ -4,7 +4,7 @@ import api from '../api/client';
 import type { PublicDomainsResponse } from '../types';
 import DomainTable from '../components/DomainTable';
 import CurrencyTotal from '../components/CurrencyTotal';
-import { formatCurrencyOption } from '../utils/currency';
+import { formatCurrencyOption, isSupportedCurrency } from '../utils/currency';
 
 export default function PublicView() {
   const [data, setData] = useState<PublicDomainsResponse | null>(null);
@@ -31,6 +31,18 @@ export default function PublicView() {
     fetchDomains();
   }, [fetchDomains]);
 
+  const supportedCurrencies = data?.available_currencies.filter(isSupportedCurrency) ?? [];
+
+  useEffect(() => {
+    if (supportedCurrencies.length === 0) {
+      return;
+    }
+
+    if (!supportedCurrencies.includes(displayCurrency)) {
+      setDisplayCurrency(supportedCurrencies[0]);
+    }
+  }, [displayCurrency, supportedCurrencies]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
@@ -40,13 +52,13 @@ export default function PublicView() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Domain Management Dashboard</p>
           </div>
           <div className="flex items-center gap-4">
-            {data && data.available_currencies.length > 0 && (
+            {supportedCurrencies.length > 0 && (
               <select
                 value={displayCurrency}
                 onChange={(e) => setDisplayCurrency(e.target.value)}
                 className="px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                {data.available_currencies.map((c) => (
+                {supportedCurrencies.map((c) => (
                   <option key={c} value={c}>{formatCurrencyOption(c)}</option>
                 ))}
               </select>

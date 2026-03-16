@@ -1,3 +1,4 @@
+pub mod app_setting;
 pub mod domain;
 pub mod domain_tag;
 pub mod exchange_rate;

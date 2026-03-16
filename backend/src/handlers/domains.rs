@@ -1,7 +1,7 @@
 use axum::{extract::{Path, State}, Json};
 use chrono::Utc;
 use rust_decimal::Decimal;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, ModelTrait, QueryFilter, Set, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, QueryFilter, Set, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -30,19 +30,24 @@ pub struct DomainResponse {
     pub tags: Vec<tag::Model>,
 }
 
+#[derive(Deserialize)]
+pub struct RefreshDomainsPayload {
+    pub domain_ids: Option<Vec<Uuid>>,
+}
+
 pub async fn list(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
 ) -> Result<Json<Vec<DomainResponse>>, AppError> {
-    let domains = domain::Entity::find().all(&db).await?;
+    let domains = domain::Entity::find().all(&state.db).await?;
     let mut results = Vec::new();
 
     for d in domains {
         let reg = if let Some(rid) = d.registrar_id {
-            registrar::Entity::find_by_id(rid).one(&db).await?
+            registrar::Entity::find_by_id(rid).one(&state.db).await?
         } else {
             None
         };
-        let tags = d.find_related(tag::Entity).all(&db).await?;
+        let tags = d.find_related(tag::Entity).all(&state.db).await?;
         results.push(DomainResponse {
             domain: d,
             registrar: reg,
@@ -54,20 +59,20 @@ pub async fn list(
 }
 
 pub async fn get(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<DomainResponse>, AppError> {
     let d = domain::Entity::find_by_id(id)
-        .one(&db)
+        .one(&state.db)
         .await?
         .ok_or(AppError::NotFound("Domain not found".to_string()))?;
 
     let reg = if let Some(rid) = d.registrar_id {
-        registrar::Entity::find_by_id(rid).one(&db).await?
+        registrar::Entity::find_by_id(rid).one(&state.db).await?
     } else {
         None
     };
-    let tags = d.find_related(tag::Entity).all(&db).await?;
+    let tags = d.find_related(tag::Entity).all(&state.db).await?;
 
     Ok(Json(DomainResponse {
         domain: d,
@@ -77,10 +82,10 @@ pub async fn get(
 }
 
 pub async fn create(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Json(payload): Json<DomainPayload>,
 ) -> Result<Json<DomainResponse>, AppError> {
-    let txn = db.begin().await?;
+    let txn = state.db.begin().await?;
     let now = Utc::now().fixed_offset();
     let domain_id = Uuid::new_v4();
 
@@ -113,11 +118,11 @@ pub async fn create(
 
     // Fetch related data for response
     let reg = if let Some(rid) = d.registrar_id {
-        registrar::Entity::find_by_id(rid).one(&db).await?
+        registrar::Entity::find_by_id(rid).one(&state.db).await?
     } else {
         None
     };
-    let tags = d.find_related(tag::Entity).all(&db).await?;
+    let tags = d.find_related(tag::Entity).all(&state.db).await?;
 
     Ok(Json(DomainResponse {
         domain: d,
@@ -127,16 +132,16 @@ pub async fn create(
 }
 
 pub async fn update(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Path(id): Path<Uuid>,
     Json(payload): Json<DomainPayload>,
 ) -> Result<Json<DomainResponse>, AppError> {
     let d = domain::Entity::find_by_id(id)
-        .one(&db)
+        .one(&state.db)
         .await?
         .ok_or(AppError::NotFound("Domain not found".to_string()))?;
 
-    let txn = db.begin().await?;
+    let txn = state.db.begin().await?;
 
     let mut model: domain::ActiveModel = d.into();
     model.name = Set(payload.name);
@@ -169,11 +174,11 @@ pub async fn update(
     txn.commit().await?;
 
     let reg = if let Some(rid) = d.registrar_id {
-        registrar::Entity::find_by_id(rid).one(&db).await?
+        registrar::Entity::find_by_id(rid).one(&state.db).await?
     } else {
         None
     };
-    let tags = d.find_related(tag::Entity).all(&db).await?;
+    let tags = d.find_related(tag::Entity).all(&state.db).await?;
 
     Ok(Json(DomainResponse {
         domain: d,
@@ -183,14 +188,40 @@ pub async fn update(
 }
 
 pub async fn delete(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let result = domain::Entity::delete_by_id(id).exec(&db).await?;
+    let result = domain::Entity::delete_by_id(id).exec(&state.db).await?;
     if result.rows_affected == 0 {
         return Err(AppError::NotFound("Domain not found".to_string()));
     }
     Ok(Json(serde_json::json!({ "deleted": true })))
+}
+
+pub async fn refresh_all(
+    State(state): State<crate::AppState>,
+    Json(payload): Json<RefreshDomainsPayload>,
+) -> Result<Json<crate::services::whois::RefreshDomainsSummary>, AppError> {
+    let summary = if let Some(domain_ids) = payload.domain_ids {
+        crate::services::whois::refresh_selected_domains(&state.db, &domain_ids).await
+    } else {
+        crate::services::whois::refresh_all_domains(&state.db).await
+    };
+
+    if summary.failed > 0 {
+        tracing::warn!(
+            "WHOIS refresh completed with {} failures out of {} domains",
+            summary.failed,
+            summary.total_domains
+        );
+    } else {
+        tracing::info!(
+            "WHOIS refresh completed successfully for {} domains",
+            summary.total_domains
+        );
+    }
+
+    Ok(Json(summary))
 }
 
 pub async fn lookup(

@@ -1,6 +1,6 @@
 use axum::{extract::{Path, State}, Json};
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -14,25 +14,25 @@ pub struct RegistrarPayload {
 }
 
 pub async fn list(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
 ) -> Result<Json<Vec<registrar::Model>>, AppError> {
-    let registrars = registrar::Entity::find().all(&db).await?;
+    let registrars = registrar::Entity::find().all(&state.db).await?;
     Ok(Json(registrars))
 }
 
 pub async fn get(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<registrar::Model>, AppError> {
     let reg = registrar::Entity::find_by_id(id)
-        .one(&db)
+        .one(&state.db)
         .await?
         .ok_or(AppError::NotFound("Registrar not found".to_string()))?;
     Ok(Json(reg))
 }
 
 pub async fn create(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Json(payload): Json<RegistrarPayload>,
 ) -> Result<Json<registrar::Model>, AppError> {
     let now = Utc::now().fixed_offset();
@@ -43,17 +43,17 @@ pub async fn create(
         created_at: Set(now),
         updated_at: Set(now),
     };
-    let result = model.insert(&db).await?;
+    let result = model.insert(&state.db).await?;
     Ok(Json(result))
 }
 
 pub async fn update(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Path(id): Path<Uuid>,
     Json(payload): Json<RegistrarPayload>,
 ) -> Result<Json<registrar::Model>, AppError> {
     let reg = registrar::Entity::find_by_id(id)
-        .one(&db)
+        .one(&state.db)
         .await?
         .ok_or(AppError::NotFound("Registrar not found".to_string()))?;
 
@@ -62,15 +62,15 @@ pub async fn update(
     model.website = Set(payload.website);
     model.updated_at = Set(Utc::now().fixed_offset());
 
-    let result = model.update(&db).await?;
+    let result = model.update(&state.db).await?;
     Ok(Json(result))
 }
 
 pub async fn delete(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let result = registrar::Entity::delete_by_id(id).exec(&db).await?;
+    let result = registrar::Entity::delete_by_id(id).exec(&state.db).await?;
     if result.rows_affected == 0 {
         return Err(AppError::NotFound("Registrar not found".to_string()));
     }

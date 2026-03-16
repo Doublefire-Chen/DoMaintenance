@@ -69,3 +69,10 @@ CREATE TABLE IF NOT EXISTS exchange_rates (
     rate DECIMAL(16, 6) NOT NULL,
     fetched_at TIMESTAMPTZ NOT NULL
 );
+
+-- 8. App settings
+CREATE TABLE IF NOT EXISTS app_settings (
+    key VARCHAR PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);

@@ -1,26 +1,26 @@
-import { BrowserRouter, Routes, Route, Link, useLocation, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Navigate, useLocation, Outlet } from 'react-router-dom';
 import PublicView from './pages/PublicView';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/admin/Dashboard';
 import DomainList from './pages/admin/DomainList';
 import DomainForm from './pages/admin/DomainForm';
 import RegistrarList from './pages/admin/RegistrarList';
 import RegistrarForm from './pages/admin/RegistrarForm';
 import TagList from './pages/admin/TagList';
 import TagForm from './pages/admin/TagForm';
+import Settings from './pages/admin/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
-import { GlobeAltIcon, TagIcon, BuildingOfficeIcon, HomeIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
+import { GlobeAltIcon, TagIcon, BuildingOfficeIcon, ArrowRightStartOnRectangleIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import api from './api/client';
 
 function AdminLayout() {
   const location = useLocation();
 
   const navItems = [
-    { name: 'Dashboard', path: '/admin', icon: HomeIcon },
     { name: 'Domains', path: '/admin/domains', icon: GlobeAltIcon },
     { name: 'Registrars', path: '/admin/registrars', icon: BuildingOfficeIcon },
     { name: 'Tags', path: '/admin/tags', icon: TagIcon },
+    { name: 'Settings', path: '/admin/settings', icon: Cog6ToothIcon },
   ];
 
   const handleLogout = async () => {
@@ -90,7 +90,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Dashboard />} />
+          <Route index element={<Navigate to="/admin/domains" replace />} />
           <Route path="domains" element={<DomainList />} />
           <Route path="domains/new" element={<DomainForm />} />
           <Route path="domains/:id/edit" element={<DomainForm />} />
@@ -100,6 +100,7 @@ function App() {
           <Route path="tags" element={<TagList />} />
           <Route path="tags/new" element={<TagForm />} />
           <Route path="tags/:id/edit" element={<TagForm />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

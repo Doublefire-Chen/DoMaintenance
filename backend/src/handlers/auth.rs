@@ -1,7 +1,7 @@
 use axum::{extract::State, http::StatusCode, Json};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use chrono::{Duration, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -15,13 +15,13 @@ pub struct LoginRequest {
 }
 
 pub async fn login(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     jar: CookieJar,
     Json(payload): Json<LoginRequest>,
 ) -> Result<(CookieJar, StatusCode), AppError> {
     let user = user::Entity::find()
         .filter(user::Column::Username.eq(&payload.username))
-        .one(&db)
+        .one(&state.db)
         .await?
         .ok_or(AppError::Unauthorized)?;
 
@@ -46,7 +46,7 @@ pub async fn login(
         created_at: Set(now),
         updated_at: Set(now),
     };
-    session_model.insert(&db).await?;
+    session_model.insert(&state.db).await?;
 
     let cookie = Cookie::build(("session_id", session_id.to_string()))
         .path("/")
@@ -59,12 +59,12 @@ pub async fn login(
 }
 
 pub async fn logout(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     jar: CookieJar,
 ) -> Result<CookieJar, AppError> {
     if let Some(cookie) = jar.get("session_id") {
         if let Ok(session_id) = Uuid::parse_str(cookie.value()) {
-            let _ = session::Entity::delete_by_id(session_id).exec(&db).await;
+            let _ = session::Entity::delete_by_id(session_id).exec(&state.db).await;
         }
     }
 
@@ -78,7 +78,7 @@ pub async fn logout(
 }
 
 pub async fn register(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let allow = std::env::var("ALLOW_REGISTER")
@@ -90,7 +90,7 @@ pub async fn register(
         return Err(AppError::BadRequest("Registration is closed".to_string()));
     }
 
-    let count = user::Entity::find().count(&db).await?;
+    let count = user::Entity::find().count(&state.db).await?;
     if count > 0 {
         return Err(AppError::BadRequest("An account already exists".to_string()));
     }
@@ -110,7 +110,7 @@ pub async fn register(
         created_at: Set(now),
         updated_at: Set(now),
     };
-    user_model.insert(&db).await?;
+    user_model.insert(&state.db).await?;
 
     Ok((StatusCode::CREATED, Json(serde_json::json!({ "message": "User created" }))))
 }
@@ -124,7 +124,7 @@ pub async fn allow_register() -> Json<serde_json::Value> {
 }
 
 pub async fn me(
-    State((db, _)): State<(DatabaseConnection, crate::services::currency::CurrencyService)>,
+    State(state): State<crate::AppState>,
     jar: CookieJar,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let session_id = jar
@@ -133,17 +133,17 @@ pub async fn me(
         .ok_or(AppError::Unauthorized)?;
 
     let session = session::Entity::find_by_id(session_id)
-        .one(&db)
+        .one(&state.db)
         .await?
         .ok_or(AppError::Unauthorized)?;
 
     if session.expires_at < Utc::now().fixed_offset() {
-        let _ = session::Entity::delete_by_id(session_id).exec(&db).await;
+        let _ = session::Entity::delete_by_id(session_id).exec(&state.db).await;
         return Err(AppError::Unauthorized);
     }
 
     let user = user::Entity::find_by_id(session.user_id)
-        .one(&db)
+        .one(&state.db)
         .await?
         .ok_or(AppError::Unauthorized)?;
 

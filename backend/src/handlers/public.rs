@@ -1,12 +1,12 @@
 use axum::{extract::{Query, State}, Json};
 use chrono::Utc;
 use rust_decimal::Decimal;
-use sea_orm::{DatabaseConnection, EntityTrait, ModelTrait};
+use sea_orm::{EntityTrait, ModelTrait};
 use serde::{Deserialize, Serialize};
 
 use crate::entities::{domain, registrar, tag};
 use crate::errors::AppError;
-use crate::services::currency::{self, CurrencyService};
+use crate::services::currency;
 
 #[derive(Deserialize)]
 pub struct PublicQuery {
@@ -85,25 +85,25 @@ fn calculate_status(remaining_days: i64) -> String {
 }
 
 pub async fn get_domains(
-    State((db, currency_svc)): State<(DatabaseConnection, CurrencyService)>,
+    State(state): State<crate::AppState>,
     Query(query): Query<PublicQuery>,
 ) -> Result<Json<PublicResponse>, AppError> {
     let display_currency = query.display_currency.unwrap_or_else(|| "CNY".to_string());
     let today = Utc::now().date_naive();
 
-    let domains = domain::Entity::find().all(&db).await?;
-    let rates = currency_svc.read().await;
+    let domains = domain::Entity::find().all(&state.db).await?;
+    let rates = state.currency.read().await;
 
     let mut public_domains = Vec::new();
     let mut total = Decimal::ZERO;
 
     for d in &domains {
         let reg = if let Some(rid) = d.registrar_id {
-            registrar::Entity::find_by_id(rid).one(&db).await?
+            registrar::Entity::find_by_id(rid).one(&state.db).await?
         } else {
             None
         };
-        let tags = d.find_related(tag::Entity).all(&db).await?;
+        let tags = d.find_related(tag::Entity).all(&state.db).await?;
 
         let remaining_days = (d.expiration_date - today).num_days();
         let registered_days = d.registration_date.map(|registration_date| {
@@ -148,8 +148,8 @@ pub async fn get_domains(
 }
 
 pub async fn get_currencies(
-    State((_db, currency_svc)): State<(DatabaseConnection, CurrencyService)>,
+    State(state): State<crate::AppState>,
 ) -> Result<Json<Vec<String>>, AppError> {
-    let rates = currency_svc.read().await;
+    let rates = state.currency.read().await;
     Ok(Json(currency::available_currencies(&rates.rates)))
 }
