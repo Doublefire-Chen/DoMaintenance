@@ -206,15 +206,16 @@ pub async fn refresh_all(
         tracing::warn!("Currency refresh failed before WHOIS refresh: {}", err);
     }
 
+    let whois_request_delay_ms = state.app_settings.whois_request_delay_ms().await;
     let summary = if let Some(domain_ids) = payload.domain_ids {
         crate::services::whois::refresh_selected_domains(
             &state.db,
             &domain_ids,
-            state.whois_request_delay_ms,
+            whois_request_delay_ms,
         )
         .await
     } else {
-        crate::services::whois::refresh_all_domains(&state.db, state.whois_request_delay_ms).await
+        crate::services::whois::refresh_all_domains(&state.db, whois_request_delay_ms).await
     };
 
     if summary.failed > 0 {

@@ -4,34 +4,66 @@ use serde::{Deserialize, Serialize};
 use crate::{errors::AppError, AppState};
 
 #[derive(Serialize)]
-pub struct WhoisRefreshSettingsResponse {
-    pub interval_hours: u64,
+pub struct SettingsResponse {
+    pub allow_register: bool,
+    pub whois_refresh_interval_hours: u64,
+    pub whois_request_delay_ms: u64,
 }
 
 #[derive(Deserialize)]
-pub struct WhoisRefreshSettingsPayload {
-    pub interval_hours: u64,
+pub struct SettingsPayload {
+    pub allow_register: bool,
+    pub whois_refresh_interval_hours: u64,
+    pub whois_request_delay_ms: u64,
 }
 
-pub async fn get_whois_refresh(
+pub async fn get_settings(
     State(state): State<AppState>,
-) -> Result<Json<WhoisRefreshSettingsResponse>, AppError> {
-    let interval_hours = state.whois_refresh.current_hours().await;
-    Ok(Json(WhoisRefreshSettingsResponse { interval_hours }))
+) -> Result<Json<SettingsResponse>, AppError> {
+    let allow_register = state.app_settings.allow_register().await;
+    let whois_refresh_interval_hours = state.whois_refresh.current_hours().await;
+    let whois_request_delay_ms = state.app_settings.whois_request_delay_ms().await;
+
+    Ok(Json(SettingsResponse {
+        allow_register,
+        whois_refresh_interval_hours,
+        whois_request_delay_ms,
+    }))
 }
 
-pub async fn update_whois_refresh(
+pub async fn update_settings(
     State(state): State<AppState>,
-    Json(payload): Json<WhoisRefreshSettingsPayload>,
-) -> Result<Json<WhoisRefreshSettingsResponse>, AppError> {
-    crate::services::whois_refresh::save_interval_hours(&state.db, payload.interval_hours).await?;
+    Json(payload): Json<SettingsPayload>,
+) -> Result<Json<SettingsResponse>, AppError> {
+    crate::services::app_settings::save_allow_register(&state.db, payload.allow_register).await?;
+    crate::services::whois_refresh::save_interval_hours(
+        &state.db,
+        payload.whois_refresh_interval_hours,
+    )
+    .await?;
+    crate::services::app_settings::save_whois_request_delay_ms(
+        &state.db,
+        payload.whois_request_delay_ms,
+    )
+    .await?;
+
+    state
+        .app_settings
+        .set_allow_register(payload.allow_register)
+        .await;
+    state
+        .app_settings
+        .set_whois_request_delay_ms(payload.whois_request_delay_ms)
+        .await;
     state
         .whois_refresh
-        .set_hours(payload.interval_hours)
+        .set_hours(payload.whois_refresh_interval_hours)
         .await
         .map_err(AppError::Internal)?;
 
-    Ok(Json(WhoisRefreshSettingsResponse {
-        interval_hours: payload.interval_hours,
+    Ok(Json(SettingsResponse {
+        allow_register: payload.allow_register,
+        whois_refresh_interval_hours: payload.whois_refresh_interval_hours,
+        whois_request_delay_ms: payload.whois_request_delay_ms,
     }))
 }

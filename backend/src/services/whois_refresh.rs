@@ -7,6 +7,7 @@ use tokio::sync::{watch, RwLock};
 use crate::entities::app_setting;
 
 const WHOIS_REFRESH_SETTING_KEY: &str = "whois_refresh_interval_hours";
+pub const DEFAULT_WHOIS_REFRESH_INTERVAL_HOURS: u64 = 24;
 
 #[derive(Clone)]
 pub struct WhoisRefreshService {
@@ -40,7 +41,7 @@ impl WhoisRefreshService {
     }
 }
 
-pub async fn load_interval_hours(db: &DatabaseConnection, default_hours: u64) -> u64 {
+pub async fn load_interval_hours(db: &DatabaseConnection) -> u64 {
     app_setting::Entity::find()
         .filter(app_setting::Column::Key.eq(WHOIS_REFRESH_SETTING_KEY))
         .one(db)
@@ -48,7 +49,7 @@ pub async fn load_interval_hours(db: &DatabaseConnection, default_hours: u64) ->
         .ok()
         .flatten()
         .and_then(|setting| setting.value.parse::<u64>().ok())
-        .unwrap_or(default_hours)
+        .unwrap_or(DEFAULT_WHOIS_REFRESH_INTERVAL_HOURS)
 }
 
 pub async fn save_interval_hours(db: &DatabaseConnection, hours: u64) -> Result<(), sea_orm::DbErr> {

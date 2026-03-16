@@ -18,14 +18,15 @@ mod middleware;
 mod services;
 
 use services::currency::CurrencyService;
+use services::app_settings::AppSettingsService;
 use services::whois_refresh::WhoisRefreshService;
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: DatabaseConnection,
     pub currency: CurrencyService,
+    pub app_settings: AppSettingsService,
     pub whois_refresh: WhoisRefreshService,
-    pub whois_request_delay_ms: u64,
 }
 
 #[tokio::main]
@@ -44,21 +45,25 @@ async fn main() {
     let db = db::connect(&config).await;
 
     let currency_svc = services::currency::init(&db).await;
-    let initial_whois_refresh_hours =
-        services::whois_refresh::load_interval_hours(&db, config.whois_refresh_interval_hours).await;
+    let initial_allow_register = services::app_settings::load_allow_register(&db).await;
+    let initial_whois_request_delay_ms =
+        services::app_settings::load_whois_request_delay_ms(&db).await;
+    let app_settings_svc =
+        AppSettingsService::new(initial_allow_register, initial_whois_request_delay_ms);
+    let initial_whois_refresh_hours = services::whois_refresh::load_interval_hours(&db).await;
     let whois_refresh_svc = WhoisRefreshService::new(initial_whois_refresh_hours);
 
     let state = AppState {
         db: db.clone(),
         currency: currency_svc,
+        app_settings: app_settings_svc.clone(),
         whois_refresh: whois_refresh_svc.clone(),
-        whois_request_delay_ms: config.whois_request_delay_ms,
     };
 
     {
         let refresh_db = db.clone();
         let refresh_currency = state.currency.clone();
-        let whois_request_delay_ms = config.whois_request_delay_ms;
+        let refresh_settings = state.app_settings.clone();
         let mut refresh_rx = whois_refresh_svc.subscribe();
         tokio::spawn(async move {
             loop {
@@ -92,6 +97,7 @@ async fn main() {
                             tracing::warn!("Currency refresh failed before WHOIS refresh: {}", err);
                         }
 
+                        let whois_request_delay_ms = refresh_settings.whois_request_delay_ms().await;
                         let summary = services::whois::refresh_all_domains(
                             &refresh_db,
                             whois_request_delay_ms,
@@ -160,12 +166,12 @@ async fn main() {
             post(handlers::domains::refresh_all),
         )
         .route(
-            "/api/admin/settings/whois-refresh",
-            get(handlers::settings::get_whois_refresh),
+            "/api/admin/settings",
+            get(handlers::settings::get_settings),
         )
         .route(
-            "/api/admin/settings/whois-refresh",
-            put(handlers::settings::update_whois_refresh),
+            "/api/admin/settings",
+            put(handlers::settings::update_settings),
         )
         .route("/api/admin/currencies", get(handlers::currencies::list))
         .route(

@@ -81,10 +81,7 @@ pub async fn register(
     State(state): State<crate::AppState>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
-    let allow = std::env::var("ALLOW_REGISTER")
-        .unwrap_or_else(|_| "false".to_string())
-        .parse::<bool>()
-        .unwrap_or(false);
+    let allow = state.app_settings.allow_register().await;
 
     if !allow {
         return Err(AppError::BadRequest("Registration is closed".to_string()));
@@ -115,11 +112,10 @@ pub async fn register(
     Ok((StatusCode::CREATED, Json(serde_json::json!({ "message": "User created" }))))
 }
 
-pub async fn allow_register() -> Json<serde_json::Value> {
-    let allow = std::env::var("ALLOW_REGISTER")
-        .unwrap_or_else(|_| "false".to_string())
-        .parse::<bool>()
-        .unwrap_or(false);
+pub async fn allow_register(
+    State(state): State<crate::AppState>,
+) -> Json<serde_json::Value> {
+    let allow = state.app_settings.allow_register().await;
     Json(serde_json::json!({ "allow_register": allow }))
 }
 
