@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client';
+import { formatCurrencyOption, isSupportedCurrency, normalizeCurrencyCode } from '../../utils/currency';
 
 interface CurrencyRate {
   code: string;
@@ -9,6 +10,11 @@ interface CurrencyRate {
 interface CurrencyStatus {
   fetched_at: string;
   currencies: CurrencyRate[];
+}
+
+function formatRate(rate: string | number): string {
+  const parsed = typeof rate === 'number' ? rate : Number.parseFloat(rate);
+  return Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00';
 }
 
 export default function Currencies() {
@@ -62,6 +68,13 @@ export default function Currencies() {
         </div>
       ) : data ? (
         <>
+          {(() => {
+            const supportedCurrencies = data.currencies.filter((currency) =>
+              isSupportedCurrency(currency.code) && normalizeCurrencyCode(currency.code) !== 'USD',
+            );
+
+            return (
+              <>
           <div className="mb-4 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
             <p className="text-sm text-gray-500 dark:text-gray-400">Last fetched</p>
             <p className="text-base font-medium text-gray-900 dark:text-gray-100 mt-1">
@@ -74,26 +87,33 @@ export default function Currencies() {
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Currency</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rate vs USD</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Label</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rate vs 🇺🇸 $ (USD)</th>
                 </tr>
               </thead>
               <tbody>
-                {data.currencies.map((currency) => (
+                {supportedCurrencies.map((currency) => (
                   <tr
                     key={currency.code}
                     className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
                   >
                     <td className="py-3 px-4 font-mono text-sm text-gray-900 dark:text-gray-100">
-                      {currency.code}
+                      {normalizeCurrencyCode(currency.code)}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
-                      {currency.rate}
+                      {formatCurrencyOption(currency.code)}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                      {`1 🇺🇸 $ (USD) = ${formatRate(currency.rate)} ${formatCurrencyOption(currency.code)}`}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+              </>
+            );
+          })()}
         </>
       ) : null}
     </div>

@@ -88,7 +88,8 @@ pub async fn get_domains(
     State(state): State<crate::AppState>,
     Query(query): Query<PublicQuery>,
 ) -> Result<Json<PublicResponse>, AppError> {
-    let display_currency = query.display_currency.unwrap_or_else(|| "CNY".to_string());
+    let display_currency =
+        currency::normalize_supported_currency(query.display_currency.as_deref());
     let today = Utc::now().date_naive();
 
     let domains = domain::Entity::find().all(&state.db).await?;

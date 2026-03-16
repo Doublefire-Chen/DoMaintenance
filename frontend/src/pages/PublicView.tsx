@@ -1,16 +1,18 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
-import type { PublicDomainsResponse } from '../types';
+import type { PublicDomainsResponse, User } from '../types';
 import DomainTable from '../components/DomainTable';
 import CurrencyTotal from '../components/CurrencyTotal';
 import { formatCurrencyOption, isSupportedCurrency } from '../utils/currency';
 
 export default function PublicView() {
   const [data, setData] = useState<PublicDomainsResponse | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState('CNY');
   const [loading, setLoading] = useState(true);
+  const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
   const fetchDomains = useCallback(() => {
     setLoading(true);
@@ -31,6 +33,31 @@ export default function PublicView() {
     fetchDomains();
   }, [fetchDomains]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(`${apiBaseUrl}/api/auth/me`, {
+      credentials: 'include',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          setUser(null);
+          return;
+        }
+
+        const payload = await response.json() as User;
+        setUser(payload);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setUser(null);
+        }
+      });
+
+    return () => controller.abort();
+  }, [apiBaseUrl]);
+
   const supportedCurrencies = data?.available_currencies.filter(isSupportedCurrency) ?? [];
 
   useEffect(() => {
@@ -42,6 +69,14 @@ export default function PublicView() {
       setDisplayCurrency(supportedCurrencies[0]);
     }
   }, [displayCurrency, supportedCurrencies]);
+
+  const handleLogout = async () => {
+    try {
+      await api.post('/api/auth/logout');
+    } finally {
+      setUser(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -63,12 +98,32 @@ export default function PublicView() {
                 ))}
               </select>
             )}
-            <Link
-              to="/login"
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-            >
-              Login
-            </Link>
+            {user ? (
+              <>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {user.username}
+                </span>
+                <Link
+                  to="/admin"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                >
+                  Admin
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors duration-200"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+              >
+                Login
+              </Link>
+            )}
           </div>
         </div>
       </header>
