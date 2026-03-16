@@ -156,6 +156,7 @@ async fn main() {
             "/api/admin/settings/whois-refresh",
             put(handlers::settings::update_whois_refresh),
         )
+        .route("/api/admin/currencies", get(handlers::currencies::list))
         .route(
             "/api/admin/whois/:domain",
             get(handlers::domains::lookup),

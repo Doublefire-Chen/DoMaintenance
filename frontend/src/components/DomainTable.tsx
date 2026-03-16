@@ -74,7 +74,7 @@ export default function DomainTable({
                     {formatCurrencyAmount(domain.renew_price, domain.currency)}
                     {domain.converted_price != null && shouldShowConvertedPrice(domain.currency) && (
                       <span className="text-xs text-gray-400 ml-1">
-                        \u2248 {formatCurrencyAmount(
+                        &asymp; {formatCurrencyAmount(
                           domain.converted_price,
                           displayCurrency || domain.currency,
                         )}
