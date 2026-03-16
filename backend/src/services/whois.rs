@@ -51,12 +51,23 @@ fn domain_tld(domain: &str) -> Option<&str> {
     domain.rsplit('.').next()
 }
 
+fn requires_manual_dates(domain: &str) -> bool {
+    matches!(domain_tld(domain), Some("cy"))
+}
+
 pub async fn lookup_domain(domain: &str) -> Result<DomainLookup, String> {
     let client = build_client()?;
     lookup_domain_with_client(&client, domain).await
 }
 
 async fn lookup_domain_with_client(client: &reqwest::Client, domain: &str) -> Result<DomainLookup, String> {
+    if requires_manual_dates(domain) {
+        return Err(format!(
+            "The .cy registry does not provide a supported automated lookup; enter dates manually for {}",
+            domain
+        ));
+    }
+
     if matches!(domain_tld(domain), Some("mk")) {
         return lookup_mk_domain(domain).await;
     }
@@ -284,6 +295,10 @@ async fn refresh_domains(
     };
 
     let total_domains = domains.len();
+    let total_refreshable = domains
+        .iter()
+        .filter(|record| !requires_manual_dates(&record.name))
+        .count();
     let mut attempted = 0;
     let mut updated = 0;
     let mut errors = Vec::new();
@@ -300,7 +315,11 @@ async fn refresh_domains(
         }
     };
 
-    for (index, record) in domains.into_iter().enumerate() {
+    for record in domains {
+        if requires_manual_dates(&record.name) {
+            continue;
+        }
+
         attempted += 1;
         match refresh_domain_record_with_client(db, &client, record).await {
             Ok(true) => updated += 1,
@@ -308,7 +327,7 @@ async fn refresh_domains(
             Err(err) => errors.push(err),
         }
 
-        if delay_ms > 0 && index + 1 < total_domains {
+        if delay_ms > 0 && attempted < total_refreshable {
             tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
         }
     }
