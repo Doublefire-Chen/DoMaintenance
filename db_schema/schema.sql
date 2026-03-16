@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS domains (
     registrar_id UUID REFERENCES registrars(id) ON DELETE SET NULL,
     registration_date TIMESTAMPTZ,
     expiration_date TIMESTAMPTZ NOT NULL,
+    display_order INTEGER NOT NULL DEFAULT 0,
     renewal_days INTEGER NOT NULL DEFAULT 365,
     renew_price DECIMAL(10, 2),
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',

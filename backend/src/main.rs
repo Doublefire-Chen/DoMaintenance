@@ -149,6 +149,11 @@ async fn main() {
     // Public routes
     let public_routes = Router::new()
         .route("/api/public/domains", get(handlers::public::get_domains))
+        .route("/api/public/favicons/:id", get(handlers::public::get_favicon))
+        .route(
+            "/api/public/registrar-favicons/:id",
+            get(handlers::public::get_registrar_favicon),
+        )
         .route(
             "/api/public/currencies",
             get(handlers::public::get_currencies),
@@ -166,6 +171,10 @@ async fn main() {
     let admin_routes = Router::new()
         .route("/api/admin/domains", get(handlers::domains::list))
         .route("/api/admin/domains", post(handlers::domains::create))
+        .route(
+            "/api/admin/domains/reorder",
+            post(handlers::domains::reorder),
+        )
         .route(
             "/api/admin/domains/refresh-whois",
             post(handlers::domains::refresh_all),
@@ -186,6 +195,10 @@ async fn main() {
         .route("/api/admin/domains/:id", get(handlers::domains::get))
         .route("/api/admin/domains/:id", put(handlers::domains::update))
         .route(
+            "/api/admin/domains/:id/refresh-favicon",
+            post(handlers::domains::refresh_favicon),
+        )
+        .route(
             "/api/admin/domains/:id",
             delete(handlers::domains::delete),
         )
@@ -205,6 +218,10 @@ async fn main() {
         .route(
             "/api/admin/registrars/:id",
             delete(handlers::registrars::delete),
+        )
+        .route(
+            "/api/admin/registrars/:id/refresh-favicons",
+            post(handlers::registrars::refresh_favicons),
         )
         .route("/api/admin/tags", get(handlers::tags::list))
         .route("/api/admin/tags", post(handlers::tags::create))

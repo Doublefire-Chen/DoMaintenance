@@ -1,24 +1,30 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../api/client';
 import type { DateTimeDisplayFormat, Domain } from '../../types';
 import { formatCurrencyAmount } from '../../utils/currency';
-import { daysSince, formatDateTime, formatRegisteredDuration } from '../../utils/date';
+import { daysSince, daysUntil, formatDateTime, formatRegisteredDuration } from '../../utils/date';
 
 export default function DomainList() {
+  const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
   const [domains, setDomains] = useState<Domain[]>([]);
   const [dateTimeFormat, setDateTimeFormat] = useState<DateTimeDisplayFormat>('slash_utc_offset');
   const [selectedDomainIds, setSelectedDomainIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshingWhois, setRefreshingWhois] = useState(false);
   const [refreshingDomainIds, setRefreshingDomainIds] = useState<string[]>([]);
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [draggingDomainId, setDraggingDomainId] = useState<string | null>(null);
+  const [reorderDraft, setReorderDraft] = useState<Domain[] | null>(null);
+  const [savingReorder, setSavingReorder] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const navigate = useNavigate();
+  const displayedDomains = reorderDraft ?? domains;
 
-  const fetchDomains = () => {
+  const fetchDomains = async () => {
     setLoading(true);
-    api.get('/api/admin/domains')
+    return api.get('/api/admin/domains')
       .then((res) => {
         setDomains(res.data);
         setSelectedDomainIds((prev) =>
@@ -103,6 +109,61 @@ export default function DomainList() {
     }
   };
 
+  const handleReorder = async (fromId: string, toId: string) => {
+    if (fromId === toId) {
+      return;
+    }
+
+    const reorderedDomains = reorderDraft ?? domains;
+    const fromIndex = reorderedDomains.findIndex((domain) => domain.id === fromId);
+    const toIndex = reorderedDomains.findIndex((domain) => domain.id === toId);
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+      return;
+    }
+
+    setSavingReorder(true);
+    setRefreshMessage(null);
+
+    const persistedOrder = reorderedDomains.map((domain) => domain.id);
+
+    try {
+      await api.post('/api/admin/domains/reorder', {
+        domain_ids: persistedOrder,
+      });
+      await fetchDomains();
+      setRefreshMessage('Domain order updated.');
+    } catch (err) {
+      console.error(err);
+      await fetchDomains();
+      setRefreshMessage('Failed to update domain order.');
+    } finally {
+      setSavingReorder(false);
+      setDraggingDomainId(null);
+      setReorderDraft(null);
+    }
+  };
+
+  const previewReorder = (fromId: string, toId: string) => {
+    setReorderDraft((prev) => {
+      const base = prev ?? domains;
+      const fromIndex = base.findIndex((domain) => domain.id === fromId);
+      const toIndex = base.findIndex((domain) => domain.id === toId);
+
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+        return base;
+      }
+
+      const next = [...base];
+      const [movedDomain] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, movedDomain);
+
+      return next.map((domain, index) => ({
+        ...domain,
+        display_order: index,
+      }));
+    });
+  };
+
   const toggleDomainSelection = (id: string) => {
     setSelectedDomainIds((prev) => (
       prev.includes(id)
@@ -112,12 +173,12 @@ export default function DomainList() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedDomainIds.length === domains.length) {
+    if (selectedDomainIds.length === displayedDomains.length) {
       setSelectedDomainIds([]);
       return;
     }
 
-    setSelectedDomainIds(domains.map((domain) => domain.id));
+    setSelectedDomainIds(displayedDomains.map((domain) => domain.id));
   };
 
   return (
@@ -126,13 +187,33 @@ export default function DomainList() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Domains</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Refresh registration and expiration dates manually for all or only the selected domains.
+            Turn on order editing to drag rows, or refresh registration and expiration dates manually.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={() => {
+              setIsReorderMode((prev) => {
+                const next = !prev;
+                if (!next) {
+                  setReorderDraft(null);
+                }
+                return next;
+              });
+              setDraggingDomainId(null);
+            }}
+            disabled={savingReorder}
+            className={`px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50 ${
+              isReorderMode
+                ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+            }`}
+          >
+            {isReorderMode ? 'Done Editing Order' : 'Edit Order'}
+          </button>
+          <button
             onClick={handleRefreshWhois}
-            disabled={refreshingWhois}
+            disabled={refreshingWhois || isReorderMode}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors duration-200 disabled:opacity-50"
           >
             {refreshingWhois
@@ -157,6 +238,12 @@ export default function DomainList() {
         </div>
       )}
 
+      {isReorderMode && (
+        <div className="mb-4 px-4 py-3 bg-indigo-50 dark:bg-indigo-900/20 text-sm text-indigo-700 dark:text-indigo-300 rounded-lg">
+          Drag a row by the handle in the Order column and drop it onto another row to save the new order.
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
@@ -171,11 +258,12 @@ export default function DomainList() {
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
                   <input
                     type="checkbox"
-                    checked={domains.length > 0 && selectedDomainIds.length === domains.length}
+                    checked={displayedDomains.length > 0 && selectedDomainIds.length === displayedDomains.length}
                     onChange={toggleSelectAll}
                     className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
                 </th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Order</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Domain</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Registrar</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Registered</th>
@@ -185,30 +273,116 @@ export default function DomainList() {
               </tr>
             </thead>
             <tbody>
-              {domains.map((domain) => (
-                <tr key={domain.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+              {displayedDomains.map((domain) => (
+                <tr
+                  key={domain.id}
+                  className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-transform ${
+                    draggingDomainId === domain.id ? 'bg-indigo-50 dark:bg-indigo-900/10 opacity-50' : ''
+                  }`}
+                  onDragOver={(e) => {
+                    if (!isReorderMode) {
+                      return;
+                    }
+                    e.preventDefault();
+                    if (draggingDomainId && draggingDomainId !== domain.id) {
+                      previewReorder(draggingDomainId, domain.id);
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (!isReorderMode) {
+                      return;
+                    }
+                    e.preventDefault();
+                    if (draggingDomainId) {
+                      void handleReorder(draggingDomainId, domain.id);
+                    }
+                  }}
+                  onDragEnd={() => {
+                    setDraggingDomainId(null);
+                    if (!savingReorder) {
+                      setReorderDraft(null);
+                    }
+                  }}
+                >
                   <td className="py-3 px-4">
                     <input
-                      type="checkbox"
-                      checked={selectedDomainIds.includes(domain.id)}
-                      onChange={() => toggleDomainSelection(domain.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
+                    type="checkbox"
+                    checked={selectedDomainIds.includes(domain.id)}
+                    onChange={() => toggleDomainSelection(domain.id)}
+                    disabled={isReorderMode}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
                   </td>
-                  <td className="py-3 px-4 font-mono text-sm text-gray-900 dark:text-gray-100">{domain.name}</td>
-                  <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{domain.registrar?.name || '\u2014'}</td>
+                  <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center gap-2">
+                      {isReorderMode && (
+                        <button
+                          type="button"
+                          draggable={!savingReorder}
+                          onDragStart={(e) => {
+                            setDraggingDomainId(domain.id);
+                            setReorderDraft(displayedDomains);
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', domain.id);
+                          }}
+                          className="cursor-grab text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 disabled:opacity-50"
+                          disabled={savingReorder}
+                          aria-label={`Drag to reorder ${domain.name}`}
+                        >
+                          <Bars3Icon className="h-5 w-5" />
+                        </button>
+                      )}
+                      <span>{domain.display_order}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{domain.name}</span>
+                  </td>
+                  <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                    {domain.registrar ? (
+                      <div className="flex items-center gap-2">
+                        {domain.favicon_url ? (
+                          <img
+                            src={`${apiBaseUrl}${domain.favicon_url}`}
+                            alt=""
+                            className="h-5 w-5 rounded"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="h-5 w-5 rounded bg-gray-100 dark:bg-gray-800" />
+                        )}
+                        <span>{domain.registrar.name}</span>
+                      </div>
+                    ) : '\u2014'}
+                  </td>
                   <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
                     {domain.registration_date ? (
                       <div>
                         <div>{formatDateTime(domain.registration_date, dateTimeFormat) || domain.registration_date}</div>
                         <div className="text-xs text-gray-400">
-                          {formatRegisteredDuration(daysSince(domain.registration_date))}
+                          {(() => {
+                            const registeredFor = formatRegisteredDuration(daysSince(domain.registration_date));
+                            return registeredFor ? `Registered for ${registeredFor}` : 'Registration time unavailable';
+                          })()}
                         </div>
                       </div>
                     ) : '\u2014'}
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
-                    {formatDateTime(domain.expiration_date, dateTimeFormat) || domain.expiration_date}
+                    {(() => {
+                      const remaining = formatRegisteredDuration(daysUntil(domain.expiration_date));
+                      return (
+                    <div>
+                      <div>{formatDateTime(domain.expiration_date, dateTimeFormat) || domain.expiration_date}</div>
+                      <div className="text-xs text-gray-400">
+                        {remaining ? `${remaining} left` : 'Expired'}
+                      </div>
+                    </div>
+                      );
+                    })()}
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
                     {domain.renew_price != null
@@ -219,20 +393,22 @@ export default function DomainList() {
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => handleRefreshDomain(domain.id, domain.name)}
-                        disabled={refreshingDomainIds.includes(domain.id)}
+                        disabled={refreshingDomainIds.includes(domain.id) || isReorderMode}
                         className="text-sm text-gray-600 hover:text-gray-800 dark:text-gray-300 disabled:opacity-50"
                       >
                         {refreshingDomainIds.includes(domain.id) ? 'Refreshing...' : 'Refresh'}
                       </button>
                       <button
                         onClick={() => navigate(`/admin/domains/${domain.id}/edit`)}
-                        className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400"
+                        disabled={isReorderMode}
+                        className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 disabled:opacity-50"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(domain.id)}
-                        className="text-sm text-red-600 hover:text-red-800 dark:text-red-400"
+                        disabled={isReorderMode}
+                        className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 disabled:opacity-50"
                       >
                         Delete
                       </button>
@@ -242,7 +418,7 @@ export default function DomainList() {
               ))}
             </tbody>
           </table>
-          {domains.length === 0 && (
+          {displayedDomains.length === 0 && (
             <div className="text-center py-12 text-gray-500">No domains yet.</div>
           )}
         </div>

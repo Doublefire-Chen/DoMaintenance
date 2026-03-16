@@ -10,6 +10,7 @@ pub struct Model {
     pub registrar_id: Option<Uuid>,
     pub registration_date: Option<DateTimeWithTimeZone>,
     pub expiration_date: DateTimeWithTimeZone,
+    pub display_order: i32,
     pub renewal_days: i32,
     #[sea_orm(column_type = "Decimal(Some((10, 2)))")]
     pub renew_price: Option<Decimal>,

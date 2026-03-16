@@ -5,8 +5,11 @@ import api from '../../api/client';
 import type { Registrar } from '../../types';
 
 export default function RegistrarList() {
+  const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
   const [registrars, setRegistrars] = useState<Registrar[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshingRegistrarIds, setRefreshingRegistrarIds] = useState<string[]>([]);
+  const [message, setMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const fetchRegistrars = () => {
@@ -29,6 +32,29 @@ export default function RegistrarList() {
     }
   };
 
+  const handleRefreshFavicons = async (registrarId: string, registrarName: string) => {
+    setRefreshingRegistrarIds((prev) => [...prev, registrarId]);
+    setMessage(null);
+
+    try {
+      const res = await api.post(`/api/admin/registrars/${registrarId}/refresh-favicons`);
+      const summary = res.data as {
+        fetched: number;
+        total_domains: number;
+        covered_domains: number;
+        failed: number;
+      };
+      setMessage(
+        `Refreshed favicons for ${registrarName}: ${summary.fetched} fetched, ${summary.covered_domains} domains covered${summary.failed > 0 ? `, ${summary.failed} failed` : ''}.`,
+      );
+    } catch (err) {
+      console.error(err);
+      setMessage(`Failed to refresh favicons for ${registrarName}.`);
+    } finally {
+      setRefreshingRegistrarIds((prev) => prev.filter((id) => id !== registrarId));
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -41,6 +67,12 @@ export default function RegistrarList() {
           Add Registrar
         </Link>
       </div>
+
+      {message && (
+        <div className="mb-4 px-4 py-3 bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 rounded-lg">
+          {message}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -61,7 +93,24 @@ export default function RegistrarList() {
             <tbody>
               {registrars.map((reg) => (
                 <tr key={reg.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <td className="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">{reg.name}</td>
+                  <td className="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">
+                    <div className="flex items-center gap-2">
+                      {reg.website ? (
+                        <img
+                          src={`${apiBaseUrl}/api/public/registrar-favicons/${reg.id}`}
+                          alt=""
+                          className="h-5 w-5 rounded"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="h-5 w-5 rounded bg-gray-100 dark:bg-gray-800" />
+                      )}
+                      <span>{reg.name}</span>
+                    </div>
+                  </td>
                   <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
                     {reg.website ? (
                       <a href={reg.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
@@ -71,6 +120,13 @@ export default function RegistrarList() {
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => handleRefreshFavicons(reg.id, reg.name)}
+                        disabled={refreshingRegistrarIds.includes(reg.id)}
+                        className="text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                      >
+                        {refreshingRegistrarIds.includes(reg.id) ? 'Refreshing Favicons...' : 'Refresh Favicons'}
+                      </button>
                       <button onClick={() => navigate(`/admin/registrars/${reg.id}/edit`)} className="text-sm text-indigo-600 hover:text-indigo-800">Edit</button>
                       <button onClick={() => handleDelete(reg.id)} className="text-sm text-red-600 hover:text-red-800">Delete</button>
                     </div>

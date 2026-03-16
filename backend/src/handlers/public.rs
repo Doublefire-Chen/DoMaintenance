@@ -1,7 +1,7 @@
-use axum::{extract::{Query, State}, Json};
+use axum::{extract::{Path, Query, State}, http::header, response::IntoResponse, Json};
 use chrono::Utc;
 use rust_decimal::Decimal;
-use sea_orm::{EntityTrait, ModelTrait};
+use sea_orm::{EntityTrait, ModelTrait, QueryOrder};
 use serde::{Deserialize, Serialize};
 
 use crate::entities::{domain, registrar, tag};
@@ -15,6 +15,7 @@ pub struct PublicQuery {
 
 #[derive(Serialize)]
 pub struct PublicDomain {
+    pub id: uuid::Uuid,
     pub name: String,
     pub registrar: Option<registrar::Model>,
     pub tags: Vec<tag::Model>,
@@ -27,6 +28,7 @@ pub struct PublicDomain {
     pub renew_price: Option<Decimal>,
     pub currency: String,
     pub converted_price: Option<Decimal>,
+    pub favicon_url: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -95,7 +97,11 @@ pub async fn get_domains(
     let now = Utc::now().fixed_offset();
     let today = now.date_naive();
 
-    let domains = domain::Entity::find().all(&state.db).await?;
+    let domains = domain::Entity::find()
+        .order_by_asc(domain::Column::DisplayOrder)
+        .order_by_asc(domain::Column::Name)
+        .all(&state.db)
+        .await?;
     let rates = state.currency.read().await;
 
     let mut public_domains = Vec::new();
@@ -125,6 +131,7 @@ pub async fn get_domains(
         }
 
         public_domains.push(PublicDomain {
+            id: d.id,
             name: masked_name,
             registrar: reg,
             tags,
@@ -137,6 +144,11 @@ pub async fn get_domains(
             renew_price: d.renew_price,
             currency: d.currency.clone(),
             converted_price,
+            favicon_url: if let Some(rid) = d.registrar_id {
+                crate::services::favicon::registrar_favicon_url(rid).await
+            } else {
+                crate::services::favicon::favicon_url(d.id).await
+            },
         });
     }
 
@@ -159,4 +171,26 @@ pub async fn get_currencies(
 ) -> Result<Json<Vec<String>>, AppError> {
     let rates = state.currency.read().await;
     Ok(Json(currency::available_currencies(&rates.rates)))
+}
+
+pub async fn get_favicon(
+    Path(id): Path<uuid::Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    let bytes = crate::services::favicon::read_favicon(id)
+        .await
+        .map_err(|_| AppError::NotFound("Favicon not found".to_string()))?;
+    let content_type = crate::services::favicon::detect_content_type(&bytes);
+
+    Ok(([(header::CONTENT_TYPE, content_type)], bytes))
+}
+
+pub async fn get_registrar_favicon(
+    Path(id): Path<uuid::Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    let bytes = crate::services::favicon::read_registrar_favicon(id)
+        .await
+        .map_err(|_| AppError::NotFound("Registrar favicon not found".to_string()))?;
+    let content_type = crate::services::favicon::detect_content_type(&bytes);
+
+    Ok(([(header::CONTENT_TYPE, content_type)], bytes))
 }

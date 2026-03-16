@@ -21,6 +21,7 @@ export default function DomainTable({
   onEdit,
   onDelete,
 }: DomainTableProps) {
+  const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
   const shouldShowConvertedPrice = (domainCurrency: string) => {
     if (!displayCurrency) {
       return false;
@@ -61,7 +62,24 @@ export default function DomainTable({
                 </div>
               </td>
               <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
-                {domain.registrar?.name || '\u2014'}
+                {domain.registrar ? (
+                  <div className="flex items-center gap-2">
+                    {domain.favicon_url ? (
+                      <img
+                        src={`${apiBaseUrl}${domain.favicon_url}`}
+                        alt=""
+                        className="h-5 w-5 rounded"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="h-5 w-5 rounded bg-gray-100 dark:bg-gray-800" />
+                    )}
+                    <span>{domain.registrar.name}</span>
+                  </div>
+                ) : '\u2014'}
               </td>
               <td className="py-3 px-4">
                 <div>

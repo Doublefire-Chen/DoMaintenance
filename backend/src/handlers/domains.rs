@@ -1,7 +1,7 @@
 use axum::{extract::{Path, State}, Json};
 use chrono::Utc;
 use rust_decimal::Decimal;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, QueryFilter, Set, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QueryOrder, Set, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -14,6 +14,7 @@ pub struct DomainPayload {
     pub registrar_id: Option<Uuid>,
     pub registration_date: Option<chrono::DateTime<chrono::FixedOffset>>,
     pub expiration_date: chrono::DateTime<chrono::FixedOffset>,
+    pub display_order: Option<i32>,
     pub renewal_days: i32,
     pub renew_price: Option<Decimal>,
     pub currency: String,
@@ -28,6 +29,7 @@ pub struct DomainResponse {
     pub domain: domain::Model,
     pub registrar: Option<registrar::Model>,
     pub tags: Vec<tag::Model>,
+    pub favicon_url: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -35,10 +37,19 @@ pub struct RefreshDomainsPayload {
     pub domain_ids: Option<Vec<Uuid>>,
 }
 
+#[derive(Deserialize)]
+pub struct ReorderDomainsPayload {
+    pub domain_ids: Vec<Uuid>,
+}
+
 pub async fn list(
     State(state): State<crate::AppState>,
 ) -> Result<Json<Vec<DomainResponse>>, AppError> {
-    let domains = domain::Entity::find().all(&state.db).await?;
+    let domains = domain::Entity::find()
+        .order_by_asc(domain::Column::DisplayOrder)
+        .order_by_asc(domain::Column::Name)
+        .all(&state.db)
+        .await?;
     let mut results = Vec::new();
 
     for d in domains {
@@ -47,11 +58,17 @@ pub async fn list(
         } else {
             None
         };
+        let favicon_url = if let Some(rid) = d.registrar_id {
+            crate::services::favicon::registrar_favicon_url(rid).await
+        } else {
+            crate::services::favicon::favicon_url(d.id).await
+        };
         let tags = d.find_related(tag::Entity).all(&state.db).await?;
         results.push(DomainResponse {
             domain: d,
             registrar: reg,
             tags,
+            favicon_url,
         });
     }
 
@@ -73,11 +90,17 @@ pub async fn get(
         None
     };
     let tags = d.find_related(tag::Entity).all(&state.db).await?;
+    let favicon_url = if let Some(rid) = d.registrar_id {
+        crate::services::favicon::registrar_favicon_url(rid).await
+    } else {
+        crate::services::favicon::favicon_url(d.id).await
+    };
 
     Ok(Json(DomainResponse {
         domain: d,
         registrar: reg,
         tags,
+        favicon_url,
     }))
 }
 
@@ -88,6 +111,16 @@ pub async fn create(
     let txn = state.db.begin().await?;
     let now = Utc::now().fixed_offset();
     let domain_id = Uuid::new_v4();
+    let display_order = if let Some(display_order) = payload.display_order {
+        display_order
+    } else {
+        domain::Entity::find()
+            .order_by_desc(domain::Column::DisplayOrder)
+            .one(&txn)
+            .await?
+            .map(|domain| domain.display_order + 1)
+            .unwrap_or(0)
+    };
 
     let model = domain::ActiveModel {
         id: Set(domain_id),
@@ -95,6 +128,7 @@ pub async fn create(
         registrar_id: Set(payload.registrar_id),
         registration_date: Set(payload.registration_date),
         expiration_date: Set(payload.expiration_date),
+        display_order: Set(display_order),
         renewal_days: Set(payload.renewal_days),
         renew_price: Set(payload.renew_price),
         currency: Set(payload.currency),
@@ -123,11 +157,17 @@ pub async fn create(
         None
     };
     let tags = d.find_related(tag::Entity).all(&state.db).await?;
+    let favicon_url = if let Some(rid) = d.registrar_id {
+        crate::services::favicon::registrar_favicon_url(rid).await
+    } else {
+        crate::services::favicon::favicon_url(d.id).await
+    };
 
     Ok(Json(DomainResponse {
         domain: d,
         registrar: reg,
         tags,
+        favicon_url,
     }))
 }
 
@@ -140,6 +180,7 @@ pub async fn update(
         .one(&state.db)
         .await?
         .ok_or(AppError::NotFound("Domain not found".to_string()))?;
+    let existing_display_order = d.display_order;
 
     let txn = state.db.begin().await?;
 
@@ -148,6 +189,7 @@ pub async fn update(
     model.registrar_id = Set(payload.registrar_id);
     model.registration_date = Set(payload.registration_date);
     model.expiration_date = Set(payload.expiration_date);
+    model.display_order = Set(payload.display_order.unwrap_or(existing_display_order));
     model.renewal_days = Set(payload.renewal_days);
     model.renew_price = Set(payload.renew_price);
     model.currency = Set(payload.currency);
@@ -179,11 +221,17 @@ pub async fn update(
         None
     };
     let tags = d.find_related(tag::Entity).all(&state.db).await?;
+    let favicon_url = if let Some(rid) = d.registrar_id {
+        crate::services::favicon::registrar_favicon_url(rid).await
+    } else {
+        crate::services::favicon::favicon_url(d.id).await
+    };
 
     Ok(Json(DomainResponse {
         domain: d,
         registrar: reg,
         tags,
+        favicon_url,
     }))
 }
 
@@ -234,6 +282,33 @@ pub async fn refresh_all(
     Ok(Json(summary))
 }
 
+pub async fn reorder(
+    State(state): State<crate::AppState>,
+    Json(payload): Json<ReorderDomainsPayload>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    if payload.domain_ids.is_empty() {
+        return Err(AppError::BadRequest("No domains provided for reorder".to_string()));
+    }
+
+    let txn = state.db.begin().await?;
+
+    for (index, domain_id) in payload.domain_ids.iter().enumerate() {
+        let domain = domain::Entity::find_by_id(*domain_id)
+            .one(&txn)
+            .await?
+            .ok_or(AppError::NotFound(format!("Domain not found: {}", domain_id)))?;
+
+        let mut model: domain::ActiveModel = domain.into();
+        model.display_order = Set(index as i32);
+        model.updated_at = Set(Utc::now().fixed_offset());
+        model.update(&txn).await?;
+    }
+
+    txn.commit().await?;
+
+    Ok(Json(serde_json::json!({ "updated": payload.domain_ids.len() })))
+}
+
 pub async fn lookup(
     Path(domain): Path<String>,
 ) -> Result<Json<crate::services::whois::DomainLookup>, AppError> {
@@ -245,4 +320,23 @@ pub async fn lookup(
             tracing::error!("WHOIS lookup error: {}", e);
             AppError::BadRequest(e)
         })
+}
+
+pub async fn refresh_favicon(
+    State(state): State<crate::AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let domain = domain::Entity::find_by_id(id)
+        .one(&state.db)
+        .await?
+        .ok_or(AppError::NotFound("Domain not found".to_string()))?;
+
+    crate::services::favicon::refresh_domain_favicon(domain.id, &domain.name)
+        .await
+        .map_err(AppError::BadRequest)?;
+
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "favicon_url": crate::services::favicon::favicon_url(domain.id).await,
+    })))
 }

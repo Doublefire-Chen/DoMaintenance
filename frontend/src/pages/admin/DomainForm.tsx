@@ -7,6 +7,7 @@ import { fromDateTimeLocalInputValue, toDateTimeLocalInputValue } from '../../ut
 
 interface DomainFormData {
   name: string;
+  display_order: string;
   registrar_id: string;
   registration_date: string;
   expiration_date: string;
@@ -25,6 +26,7 @@ export default function DomainForm() {
 
   const [form, setForm] = useState<DomainFormData>({
     name: '',
+    display_order: '',
     registrar_id: '',
     registration_date: '',
     expiration_date: '',
@@ -56,6 +58,7 @@ export default function DomainForm() {
         const d = res.data;
         setForm({
           name: d.name,
+          display_order: String(d.display_order ?? ''),
           registrar_id: d.registrar_id || '',
           registration_date: toDateTimeLocalInputValue(d.registration_date),
           expiration_date: toDateTimeLocalInputValue(d.expiration_date),
@@ -113,6 +116,7 @@ export default function DomainForm() {
 
     const payload = {
       name: form.name,
+      display_order: form.display_order === '' ? null : parseInt(form.display_order, 10),
       registrar_id: form.registrar_id || null,
       registration_date: fromDateTimeLocalInputValue(form.registration_date),
       expiration_date: fromDateTimeLocalInputValue(form.expiration_date),
@@ -191,7 +195,19 @@ export default function DomainForm() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display Order</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form.display_order}
+                onChange={(e) => setForm({ ...form, display_order: e.target.value })}
+                placeholder="Auto"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registrar</label>
               <select
@@ -205,7 +221,7 @@ export default function DomainForm() {
                 ))}
               </select>
             </div>
-            <div>
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registration Time</label>
               <input
                 type="datetime-local"

@@ -38,6 +38,21 @@ export function daysSince(dateString: string | null | undefined): number | null 
   return Math.max(0, Math.floor(diffMs / 86_400_000));
 }
 
+export function daysUntil(dateString: string | null | undefined): number | null {
+  if (!dateString) {
+    return null;
+  }
+
+  const targetDate = new Date(dateString);
+  if (Number.isNaN(targetDate.getTime())) {
+    return null;
+  }
+
+  const now = new Date();
+  const diffMs = targetDate.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diffMs / 86_400_000));
+}
+
 function pad(value: number): string {
   return String(value).padStart(2, '0');
 }

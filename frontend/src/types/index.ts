@@ -19,6 +19,8 @@ export interface Tag {
 export interface Domain {
   id: string;
   name: string;
+  display_order: number;
+  favicon_url?: string | null;
   registrar_id: string | null;
   registrar: Registrar | null;
   tags: Tag[];
@@ -35,6 +37,7 @@ export interface Domain {
 
 export interface PublicDomain {
   name: string;
+  id: string;
   registrar: Registrar | null;
   tags: Tag[];
   registration_date: string | null;
@@ -46,6 +49,7 @@ export interface PublicDomain {
   renew_price: string | number | null;
   currency: string;
   converted_price: string | number | null;
+  favicon_url?: string | null;
 }
 
 export interface PublicDomainsResponse {
