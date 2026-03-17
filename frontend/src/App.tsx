@@ -13,10 +13,13 @@ import TagForm from './pages/admin/TagForm';
 import Settings from './pages/admin/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 import Brand from './components/Brand';
+import GitHubIcon from './components/GitHubIcon';
 import { GlobeAltIcon, TagIcon, BuildingOfficeIcon, ArrowRightStartOnRectangleIcon, Cog6ToothIcon, BanknotesIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from './api/client';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import { useI18n } from './i18n';
+
+const GITHUB_REPO_URL = 'https://github.com/Doublefire-Chen/DoMaintenance';
 
 function AdminLayout() {
   const location = useLocation();
@@ -84,7 +87,16 @@ function AdminLayout() {
           );
         })}
       </nav>
-      <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-800">
+      <div className="space-y-1 px-3 py-4 border-t border-gray-200 dark:border-gray-800">
+        <a
+          href={GITHUB_REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 w-full transition-colors duration-200"
+        >
+          <GitHubIcon className="h-5 w-5" />
+          {t('common.github')}
+        </a>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 w-full transition-colors duration-200"

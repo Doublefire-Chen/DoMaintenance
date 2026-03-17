@@ -4,11 +4,14 @@ import { ArrowLeftEndOnRectangleIcon, ArrowPathIcon, ArrowRightStartOnRectangleI
 import api from '../api/client';
 import type { PublicDomainsResponse, User } from '../types';
 import Brand from '../components/Brand';
+import GitHubIcon from '../components/GitHubIcon';
 import DomainTable from '../components/DomainTable';
 import CurrencyTotal from '../components/CurrencyTotal';
 import { formatCurrencyOption, isSupportedCurrency } from '../utils/currency';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useI18n } from '../i18n';
+
+const GITHUB_REPO_URL = 'https://github.com/Doublefire-Chen/DoMaintenance';
 
 export default function PublicView() {
   const { t } = useI18n();
@@ -192,10 +195,10 @@ export default function PublicView() {
                         to="/login"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors duration-200 hover:bg-indigo-700"
-                      >
-                        <ArrowLeftEndOnRectangleIcon className="h-4 w-4" />
-                        {t('common.login')}
-                      </Link>
+                        >
+                          <ArrowLeftEndOnRectangleIcon className="h-4 w-4" />
+                          {t('common.login')}
+                        </Link>
                     )}
                   </div>
                 </div>
@@ -251,13 +254,15 @@ export default function PublicView() {
                 </Link>
               </>
             ) : (
-              <Link
-                to="/login"
-                className={`${headerControlClass} bg-indigo-600 text-white hover:bg-indigo-700`}
-              >
-                <ArrowLeftEndOnRectangleIcon className="h-4 w-4" />
-                {t('common.login')}
-              </Link>
+              <>
+                <Link
+                  to="/login"
+                  className={`${headerControlClass} bg-indigo-600 text-white hover:bg-indigo-700`}
+                >
+                  <ArrowLeftEndOnRectangleIcon className="h-4 w-4" />
+                  {t('common.login')}
+                </Link>
+              </>
             )}
           </div>
         </div>
@@ -301,6 +306,22 @@ export default function PublicView() {
           </>
         ) : null}
       </main>
+      <footer className="border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-6 text-center sm:px-6">
+          <a
+            href={GITHUB_REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
+            <GitHubIcon className="h-4 w-4" />
+            {t('common.github')}
+          </a>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            &copy; {new Date().getFullYear()} DoMaintenance. {t('common.allRightsReserved')}
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
