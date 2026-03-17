@@ -25,6 +25,10 @@ export default function Settings() {
   const [message, setMessage] = useState<string | null>(null);
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [exportingMigration, setExportingMigration] = useState(false);
+  const [importingMigration, setImportingMigration] = useState(false);
+  const [migrationFile, setMigrationFile] = useState<File | null>(null);
+  const [migrationMessage, setMigrationMessage] = useState<string | null>(null);
 
   useEffect(() => {
     api.get('/api/admin/settings')
@@ -111,6 +115,72 @@ export default function Settings() {
       setPasswordMessage(errorMessage);
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const handleExportMigration = async () => {
+    setExportingMigration(true);
+    setMigrationMessage(null);
+
+    try {
+      const res = await api.get('/api/admin/migration/export', {
+        responseType: 'blob',
+      });
+      const blob = res.data as Blob;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `domaintenance-export-${dateStamp}.zip`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      setMigrationMessage('Project export downloaded.');
+    } catch (err) {
+      console.error(err);
+      setMigrationMessage('Failed to export project data.');
+    } finally {
+      setExportingMigration(false);
+    }
+  };
+
+  const handleImportMigration = async () => {
+    if (!migrationFile) {
+      setMigrationMessage('Select an export file first.');
+      return;
+    }
+
+    if (!confirm('Import will replace the current project data and sign you out. Continue?')) {
+      return;
+    }
+
+    setImportingMigration(true);
+    setMigrationMessage(null);
+
+    try {
+      const payload = await migrationFile.arrayBuffer();
+      const res = await api.post('/api/admin/migration/import', payload, {
+        headers: {
+          'Content-Type': 'application/zip',
+        },
+      });
+      setMigrationMessage(res.data.message || 'Project import completed. Redirecting to sign in...');
+      setMigrationFile(null);
+      window.setTimeout(() => {
+        window.location.href = '/login';
+      }, 800);
+    } catch (err: unknown) {
+      console.error(err);
+      const responseError = typeof err === 'object'
+        && err !== null
+        && 'response' in err
+        ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+        : undefined;
+      const errorMessage = typeof responseError === 'string'
+        ? responseError
+        : 'Failed to import project data.';
+      setMigrationMessage(errorMessage);
+    } finally {
+      setImportingMigration(false);
     }
   };
 
@@ -283,6 +353,56 @@ export default function Settings() {
             {passwordMessage && (
               <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 rounded-lg">
                 {passwordMessage}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            Migration
+          </h3>
+
+          <div className="space-y-4 max-w-2xl">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Export a true backup zip with `database.sql` from PostgreSQL and favicon files with real extensions. Import verifies the package structure first, then clears the current database and restores it from the backup before signing you out.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={handleExportMigration}
+                disabled={loading || exportingMigration || importingMigration}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors duration-200 disabled:opacity-50"
+              >
+                {exportingMigration ? 'Exporting...' : 'Export Project'}
+              </button>
+
+              <input
+                type="file"
+                accept="application/zip,.zip"
+                disabled={loading || exportingMigration || importingMigration}
+                onChange={(e) => setMigrationFile(e.target.files?.[0] || null)}
+                className="block text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:px-4 file:py-2 file:border-0 file:rounded-lg file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/20 dark:file:text-indigo-300"
+              />
+
+              <button
+                onClick={handleImportMigration}
+                disabled={loading || exportingMigration || importingMigration || migrationFile == null}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50"
+              >
+                {importingMigration ? 'Importing...' : 'Import Project'}
+              </button>
+            </div>
+
+            {migrationFile && (
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Selected file: {migrationFile.name}
+              </div>
+            )}
+
+            {migrationMessage && (
+              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300 rounded-lg">
+                {migrationMessage}
               </div>
             )}
           </div>

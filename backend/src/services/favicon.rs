@@ -20,6 +20,18 @@ pub async fn ensure_storage_dir() -> Result<(), String> {
         .map_err(|e| format!("Failed to create favicon storage directory: {}", e))
 }
 
+pub async fn clear_storage() -> Result<(), String> {
+    match fs::remove_dir_all(FAVICON_DIR).await {
+        Ok(_) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => {
+            return Err(format!("Failed to clear favicon storage directory: {}", err));
+        }
+    }
+
+    ensure_storage_dir().await
+}
+
 pub async fn favicon_url(domain_id: Uuid) -> Option<String> {
     if fs::metadata(favicon_path(domain_id)).await.is_ok() {
         Some(format!("/api/public/favicons/{}", domain_id))
@@ -48,6 +60,20 @@ pub async fn read_registrar_favicon(registrar_id: Uuid) -> Result<Vec<u8>, Strin
         .map_err(|e| format!("Failed to read registrar favicon: {}", e))
 }
 
+pub async fn write_favicon(domain_id: Uuid, bytes: &[u8]) -> Result<(), String> {
+    ensure_storage_dir().await?;
+    fs::write(favicon_path(domain_id), bytes)
+        .await
+        .map_err(|e| format!("Failed to save favicon: {}", e))
+}
+
+pub async fn write_registrar_favicon(registrar_id: Uuid, bytes: &[u8]) -> Result<(), String> {
+    ensure_storage_dir().await?;
+    fs::write(registrar_favicon_path(registrar_id), bytes)
+        .await
+        .map_err(|e| format!("Failed to save registrar favicon: {}", e))
+}
+
 pub fn detect_content_type(bytes: &[u8]) -> &'static str {
     if bytes.starts_with(&[0x00, 0x00, 0x01, 0x00]) {
         return "image/x-icon";
@@ -73,6 +99,18 @@ pub fn detect_content_type(bytes: &[u8]) -> &'static str {
     "application/octet-stream"
 }
 
+pub fn extension_for_bytes(bytes: &[u8]) -> &'static str {
+    match detect_content_type(bytes) {
+        "image/x-icon" => "ico",
+        "image/png" => "png",
+        "image/jpeg" => "jpg",
+        "image/gif" => "gif",
+        "image/webp" => "webp",
+        "image/svg+xml" => "svg",
+        _ => "bin",
+    }
+}
+
 pub async fn refresh_domain_favicon(domain_id: Uuid, domain_name: &str) -> Result<(), String> {
     ensure_storage_dir().await?;
 
@@ -87,9 +125,7 @@ pub async fn refresh_domain_favicon(domain_id: Uuid, domain_name: &str) -> Resul
         .map_err(|e| format!("Failed to build favicon client: {}", e))?;
 
     let bytes = fetch_favicon_bytes(&client, domain_name).await?;
-    fs::write(favicon_path(domain_id), bytes)
-        .await
-        .map_err(|e| format!("Failed to save favicon: {}", e))
+    write_favicon(domain_id, &bytes).await
 }
 
 pub async fn refresh_registrar_favicon(registrar_id: Uuid, website: &str) -> Result<(), String> {
@@ -106,9 +142,7 @@ pub async fn refresh_registrar_favicon(registrar_id: Uuid, website: &str) -> Res
         .map_err(|e| format!("Failed to build favicon client: {}", e))?;
 
     let bytes = fetch_favicon_bytes(&client, website).await?;
-    fs::write(registrar_favicon_path(registrar_id), bytes)
-        .await
-        .map_err(|e| format!("Failed to save registrar favicon: {}", e))
+    write_registrar_favicon(registrar_id, &bytes).await
 }
 
 async fn fetch_favicon_bytes(client: &reqwest::Client, source: &str) -> Result<Vec<u8>, String> {

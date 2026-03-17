@@ -20,3 +20,4 @@ rust_decimal = { version = "1", features = ["db-postgres", "serde-with-str"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 time = "0.3"
+zip = "2"

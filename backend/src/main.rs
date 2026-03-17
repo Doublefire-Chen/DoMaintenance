@@ -191,6 +191,14 @@ async fn main() {
             "/api/admin/change-password",
             post(handlers::auth::change_password),
         )
+        .route(
+            "/api/admin/migration/export",
+            get(handlers::migration::export_data),
+        )
+        .route(
+            "/api/admin/migration/import",
+            post(handlers::migration::import_data),
+        )
         .route("/api/admin/currencies", get(handlers::currencies::list))
         .route(
             "/api/admin/whois/:domain",

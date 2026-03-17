@@ -71,6 +71,17 @@ pub async fn refresh_cached_rates(
     Ok(())
 }
 
+pub async fn reload_cached_rates_from_db(
+    db: &DatabaseConnection,
+    cached: &CurrencyService,
+) -> Result<(), sea_orm::DbErr> {
+    let rates = load_rates_from_db(db).await?;
+    let mut cache = cached.write().await;
+    cache.rates = if rates.is_empty() { default_rates() } else { rates };
+    cache.fetched_at = Utc::now();
+    Ok(())
+}
+
 fn default_rates() -> HashMap<String, Decimal> {
     let mut rates = HashMap::new();
     rates.insert("USD".to_string(), Decimal::ONE);
