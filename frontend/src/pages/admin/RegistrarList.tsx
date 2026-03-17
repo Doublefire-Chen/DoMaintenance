@@ -74,7 +74,7 @@ export default function RegistrarList() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('registrars.title')}</h2>
         <Link
           to="/admin/registrars/new"
@@ -98,8 +98,77 @@ export default function RegistrarList() {
           ))}
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full">
+        <>
+          <div className="space-y-3 md:hidden">
+            {registrars.map((reg) => (
+              <div key={reg.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-sm text-gray-900 dark:text-gray-100">
+                      {reg.website ? (
+                        <img
+                          key={`${reg.id}-${faviconVersionByRegistrarId[reg.id] ?? 0}`}
+                          src={`${apiBaseUrl}/api/public/registrar-favicons/${reg.id}?v=${faviconVersionByRegistrarId[reg.id] ?? 0}`}
+                          alt=""
+                          className="h-5 w-5 rounded"
+                          loading="lazy"
+                          style={{ display: hiddenRegistrarFaviconIds.includes(reg.id) ? 'none' : undefined }}
+                          onError={() => {
+                            setHiddenRegistrarFaviconIds((prev) => (
+                              prev.includes(reg.id) ? prev : [...prev, reg.id]
+                            ));
+                          }}
+                          onLoad={() => {
+                            setHiddenRegistrarFaviconIds((prev) => prev.filter((id) => id !== reg.id));
+                          }}
+                        />
+                      ) : (
+                        <div className="h-5 w-5 rounded bg-gray-100 dark:bg-gray-800" />
+                      )}
+                      <span className="font-medium">{reg.name}</span>
+                    </div>
+                    <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 break-all">
+                      {reg.website ? (
+                        <a href={reg.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                          {reg.website}
+                        </a>
+                      ) : '\u2014'}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      onClick={() => handleRefreshFavicons(reg.id, reg.name)}
+                      disabled={refreshingRegistrarIds.includes(reg.id)}
+                      title={refreshingRegistrarIds.includes(reg.id) ? t('registrars.refreshingFavicons') : t('registrars.refreshFavicons')}
+                      aria-label={refreshingRegistrarIds.includes(reg.id) ? t('registrars.refreshingFavicons') : t('registrars.refreshFavicons')}
+                      className={`${actionButtonClass} text-gray-600 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-300 dark:hover:bg-gray-800`}
+                    >
+                      <ArrowPathIcon className={`h-4 w-4 ${refreshingRegistrarIds.includes(reg.id) ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button
+                      onClick={() => navigate(`/admin/registrars/${reg.id}/edit`)}
+                      title={t('common.edit')}
+                      aria-label={t('common.edit')}
+                      className={`${actionButtonClass} text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20`}
+                    >
+                      <PencilSquareIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(reg.id)}
+                      title={t('common.delete')}
+                      aria-label={t('common.delete')}
+                      className={`${actionButtonClass} text-red-600 hover:bg-red-50 hover:text-red-800 dark:text-red-400 dark:hover:bg-red-900/20`}
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl bg-white shadow-sm dark:bg-gray-900 md:block">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700">
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('common.name')}</th>
@@ -175,10 +244,11 @@ export default function RegistrarList() {
               ))}
             </tbody>
           </table>
+          </div>
           {registrars.length === 0 && (
             <div className="text-center py-12 text-gray-500">{t('registrars.noRegistrars')}</div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

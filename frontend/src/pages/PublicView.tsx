@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeftEndOnRectangleIcon, ArrowPathIcon, ArrowRightStartOnRectangleIcon, ChevronDownIcon, Cog6ToothIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftEndOnRectangleIcon, ArrowPathIcon, ArrowRightStartOnRectangleIcon, Bars3Icon, ChevronDownIcon, Cog6ToothIcon, UserCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from '../api/client';
 import type { PublicDomainsResponse, User } from '../types';
 import DomainTable from '../components/DomainTable';
@@ -18,8 +18,10 @@ export default function PublicView() {
   const [displayCurrency, setDisplayCurrency] = useState('CNY');
   const [loading, setLoading] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const mobileMenuRef = useRef<HTMLDivElement | null>(null);
 
   const fetchDomains = useCallback(() => {
     setLoading(true);
@@ -95,24 +97,111 @@ export default function PublicView() {
     };
   }, [isUserMenuOpen]);
 
+  useEffect(() => {
+    if (!isMobileMenuOpen) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!mobileMenuRef.current?.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
+
   const handleLogout = async () => {
     try {
       await api.post('/api/auth/logout');
     } finally {
       setUser(null);
       setIsUserMenuOpen(false);
+      setIsMobileMenuOpen(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-5 sm:px-6 sm:py-6">
+          <div className="flex items-start justify-between gap-4 lg:items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">DoMaintenance</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('public.subtitle')}</p>
           </div>
-          <div className="flex items-center gap-3">
+            <div className="lg:hidden" ref={mobileMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                aria-label="Toggle header menu"
+              >
+                {isMobileMenuOpen ? <XMarkIcon className="h-5 w-5" /> : <Bars3Icon className="h-5 w-5" />}
+              </button>
+              {isMobileMenuOpen && (
+                <div className="absolute right-4 z-20 mt-3 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:right-6">
+                  <div className="flex flex-col gap-3">
+                    <div className="rounded-lg bg-gray-100 px-3 py-2 dark:bg-gray-800">
+                      <LanguageSwitcher compact />
+                    </div>
+                    {supportedCurrencies.length > 0 && (
+                      <select
+                        value={displayCurrency}
+                        onChange={(e) => {
+                          setDisplayCurrency(e.target.value);
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="h-10 rounded-lg border border-gray-200 bg-gray-100 px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                      >
+                        {supportedCurrencies.map((c) => (
+                          <option key={c} value={c}>{formatCurrencyOption(c)}</option>
+                        ))}
+                      </select>
+                    )}
+                    {user ? (
+                      <>
+                        <div className="inline-flex h-10 items-center gap-2 rounded-lg bg-gray-100 px-4 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                          <UserCircleIcon className="h-4 w-4" />
+                          {user.username}
+                        </div>
+                        <Link
+                          to="/admin"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors duration-200 hover:bg-indigo-700"
+                        >
+                          <Cog6ToothIcon className="h-4 w-4" />
+                          {t('common.admin')}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                        >
+                          <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
+                          {t('common.signOut')}
+                        </button>
+                      </>
+                    ) : (
+                      <Link
+                        to="/login"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors duration-200 hover:bg-indigo-700"
+                      >
+                        <ArrowLeftEndOnRectangleIcon className="h-4 w-4" />
+                        {t('common.login')}
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-4 hidden flex-wrap items-center gap-3 lg:flex lg:justify-end">
             <div className="flex h-10 items-center rounded-lg bg-gray-100 px-3 dark:bg-gray-800">
               <LanguageSwitcher compact />
             </div>
@@ -120,7 +209,7 @@ export default function PublicView() {
               <select
                 value={displayCurrency}
                 onChange={(e) => setDisplayCurrency(e.target.value)}
-                className="h-10 rounded-lg border border-gray-200 bg-gray-100 px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                className="h-10 min-w-[8rem] rounded-lg border border-gray-200 bg-gray-100 px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
               >
                 {supportedCurrencies.map((c) => (
                   <option key={c} value={c}>{formatCurrencyOption(c)}</option>
@@ -173,7 +262,7 @@ export default function PublicView() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
         {loading ? (
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-8">
             <div className="space-y-4">
@@ -195,7 +284,7 @@ export default function PublicView() {
           </div>
         ) : data ? (
           <>
-            <div className="flex justify-end mb-6">
+            <div className="mb-6 flex justify-stretch sm:justify-end">
               <CurrencyTotal
                 currency={data.currency_totals.display_currency}
                 total={data.currency_totals.total}

@@ -43,7 +43,7 @@ export default function Currencies() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('currencies.title')}</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -84,8 +84,32 @@ export default function Currencies() {
             </p>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm overflow-hidden">
-            <table className="w-full">
+          <div className="space-y-3 md:hidden">
+            {supportedCurrencies.map((currency) => (
+              <div key={currency.code} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {normalizeCurrencyCode(currency.code)}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 text-right">
+                    {formatRate(currency.rate)}
+                  </div>
+                </div>
+                <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  {formatCurrencyOption(currency.code)}
+                </div>
+                <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  {t('currencies.rateRow', {
+                    rate: formatRate(currency.rate),
+                    label: formatCurrencyOption(currency.code),
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl bg-white shadow-sm dark:bg-gray-900 md:block">
+            <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('currencies.currency')}</th>

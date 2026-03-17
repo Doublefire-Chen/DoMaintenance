@@ -195,13 +195,13 @@ export default function Settings() {
         </p>
       </div>
 
-      <div className="space-y-6 max-w-2xl">
+      <div className="max-w-2xl space-y-6">
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             {t('settings.sectionRegistration')}
           </h3>
 
-          <label className="flex items-center justify-between gap-4">
+          <label className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {t('settings.allowRegister')}
@@ -228,7 +228,7 @@ export default function Settings() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {t('settings.autoRefreshInterval')}
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               type="number"
               min="0"
@@ -247,7 +247,7 @@ export default function Settings() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-5 mb-1">
             {t('settings.requestDelay')}
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               type="number"
               min="0"
