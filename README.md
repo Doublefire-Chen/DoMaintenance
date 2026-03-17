@@ -127,7 +127,7 @@ sudo chmod -R 755 /opt/domaintenance
 
 ```bash
 cd ~/DoMaintenance/frontend
-npm install
+pnpm install
 cp .env.example .env
 vim .env
 ```
@@ -141,7 +141,7 @@ VITE_API_URL=https://api.example.com
 Build the frontend:
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 Install the built files:
