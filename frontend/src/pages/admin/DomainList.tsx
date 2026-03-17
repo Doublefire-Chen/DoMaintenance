@@ -5,8 +5,10 @@ import api from '../../api/client';
 import type { DateTimeDisplayFormat, Domain } from '../../types';
 import { formatCurrencyAmount } from '../../utils/currency';
 import { daysSince, daysUntil, formatDateTime, formatRegisteredDuration } from '../../utils/date';
+import { useI18n } from '../../i18n';
 
 export default function DomainList() {
+  const { t } = useI18n();
   const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
   const [domains, setDomains] = useState<Domain[]>([]);
   const [dateTimeFormat, setDateTimeFormat] = useState<DateTimeDisplayFormat>('slash_utc_offset');
@@ -43,7 +45,7 @@ export default function DomainList() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this domain?')) return;
+    if (!confirm(t('domains.deleteConfirm'))) return;
     try {
       await api.delete(`/api/admin/domains/${id}`);
       fetchDomains();
@@ -72,11 +74,15 @@ export default function DomainList() {
         setSelectedDomainIds([]);
       }
       setRefreshMessage(
-        `Refreshed ${summary.updated} of ${summary.total_domains} domains${summary.failed > 0 ? `, ${summary.failed} failed` : ''}.`,
+        t('domains.refreshSummary', {
+          updated: summary.updated,
+          total: summary.total_domains,
+          failedSuffix: summary.failed > 0 ? t('domains.failedSuffix', { count: summary.failed }) : '',
+        }),
       );
     } catch (err) {
       console.error(err);
-      setRefreshMessage('Failed to refresh RDAP dates.');
+      setRefreshMessage(t('domains.refreshFail'));
     } finally {
       setRefreshingWhois(false);
     }
@@ -99,11 +105,15 @@ export default function DomainList() {
       fetchDomains();
       setSelectedDomainIds((prev) => prev.filter((domainId) => domainId !== id));
       setRefreshMessage(
-        `Refreshed ${domainName}: ${summary.updated} updated${summary.failed > 0 ? `, ${summary.failed} failed` : ''}.`,
+        t('domains.refreshRowSummary', {
+          name: domainName,
+          updated: summary.updated,
+          failedSuffix: summary.failed > 0 ? t('domains.failedSuffix', { count: summary.failed }) : '',
+        }),
       );
     } catch (err) {
       console.error(err);
-      setRefreshMessage(`Failed to refresh RDAP dates for ${domainName}.`);
+      setRefreshMessage(t('domains.refreshRowFail', { name: domainName }));
     } finally {
       setRefreshingDomainIds((prev) => prev.filter((domainId) => domainId !== id));
     }
@@ -131,11 +141,11 @@ export default function DomainList() {
         domain_ids: persistedOrder,
       });
       await fetchDomains();
-      setRefreshMessage('Domain order updated.');
+      setRefreshMessage(t('domains.orderUpdated'));
     } catch (err) {
       console.error(err);
       await fetchDomains();
-      setRefreshMessage('Failed to update domain order.');
+      setRefreshMessage(t('domains.orderUpdateFailed'));
     } finally {
       setSavingReorder(false);
       setDraggingDomainId(null);
@@ -185,9 +195,9 @@ export default function DomainList() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Domains</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('domains.title')}</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Turn on order editing to drag rows, or refresh registration and expiration dates manually.
+            {t('domains.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -209,7 +219,7 @@ export default function DomainList() {
                 : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
             }`}
           >
-            {isReorderMode ? 'Done Editing Order' : 'Edit Order'}
+            {isReorderMode ? t('domains.doneEditingOrder') : t('domains.editOrder')}
           </button>
           <button
             onClick={handleRefreshWhois}
@@ -217,17 +227,17 @@ export default function DomainList() {
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors duration-200 disabled:opacity-50"
           >
             {refreshingWhois
-              ? 'Refreshing...'
+              ? t('domains.refreshing')
               : selectedDomainIds.length > 0
-                ? `Refresh Selected (${selectedDomainIds.length})`
-                : 'Refresh All Dates'}
+                ? t('domains.refreshSelected', { count: selectedDomainIds.length })
+                : t('domains.refreshAllDates')}
           </button>
           <Link
             to="/admin/domains/new"
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200"
           >
             <PlusIcon className="h-4 w-4" />
-            Add Domain
+            {t('domains.addDomain')}
           </Link>
         </div>
       </div>
@@ -240,7 +250,7 @@ export default function DomainList() {
 
       {isReorderMode && (
         <div className="mb-4 px-4 py-3 bg-indigo-50 dark:bg-indigo-900/20 text-sm text-indigo-700 dark:text-indigo-300 rounded-lg">
-          Drag a row by the handle in the Order column and drop it onto another row to save the new order.
+          {t('domains.reorderHint')}
         </div>
       )}
 
@@ -263,13 +273,13 @@ export default function DomainList() {
                     className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Order</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Domain</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Registrar</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Registered</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Expires</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Price</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('common.order')}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('common.domain')}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('common.registrar')}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('domains.registered')}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('domains.expires')}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('common.price')}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -365,7 +375,7 @@ export default function DomainList() {
                         <div className="text-xs text-gray-400">
                           {(() => {
                             const registeredFor = formatRegisteredDuration(daysSince(domain.registration_date));
-                            return registeredFor ? `Registered for ${registeredFor}` : 'Registration time unavailable';
+                            return registeredFor ? t('domains.registeredFor', { duration: registeredFor }) : t('domains.registrationUnavailable');
                           })()}
                         </div>
                       </div>
@@ -378,7 +388,7 @@ export default function DomainList() {
                     <div>
                       <div>{formatDateTime(domain.expiration_date, dateTimeFormat) || domain.expiration_date}</div>
                       <div className="text-xs text-gray-400">
-                        {remaining ? `${remaining} left` : 'Expired'}
+                        {remaining ? t('domains.timeLeft', { duration: remaining }) : t('domains.expired')}
                       </div>
                     </div>
                       );
@@ -396,21 +406,21 @@ export default function DomainList() {
                         disabled={refreshingDomainIds.includes(domain.id) || isReorderMode}
                         className="text-sm text-gray-600 hover:text-gray-800 dark:text-gray-300 disabled:opacity-50"
                       >
-                        {refreshingDomainIds.includes(domain.id) ? 'Refreshing...' : 'Refresh'}
+                        {refreshingDomainIds.includes(domain.id) ? t('domains.refreshing') : t('domains.refreshRow')}
                       </button>
                       <button
                         onClick={() => navigate(`/admin/domains/${domain.id}/edit`)}
                         disabled={isReorderMode}
                         className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 disabled:opacity-50"
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button
                         onClick={() => handleDelete(domain.id)}
                         disabled={isReorderMode}
                         className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 disabled:opacity-50"
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </div>
                   </td>
@@ -419,7 +429,7 @@ export default function DomainList() {
             </tbody>
           </table>
           {displayedDomains.length === 0 && (
-            <div className="text-center py-12 text-gray-500">No domains yet.</div>
+            <div className="text-center py-12 text-gray-500">{t('domains.noDomainsYet')}</div>
           )}
         </div>
       )}

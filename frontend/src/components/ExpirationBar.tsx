@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n';
+
 interface ExpirationBarProps {
   remainingDays: number;
   renewalDays: number;
@@ -5,6 +7,7 @@ interface ExpirationBarProps {
 }
 
 export default function ExpirationBar({ remainingDays, renewalDays, status }: ExpirationBarProps) {
+  const { t } = useI18n();
   const percentage = Math.max(0, Math.min(100, (remainingDays / renewalDays) * 100));
 
   const colorClasses = {
@@ -22,7 +25,7 @@ export default function ExpirationBar({ remainingDays, renewalDays, status }: Ex
         />
       </div>
       <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-        {remainingDays}d
+        {t('expiration.daysShort', { days: remainingDays })}
       </span>
     </div>
   );

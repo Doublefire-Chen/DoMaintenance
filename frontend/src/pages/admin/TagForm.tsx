@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/client';
+import { useI18n } from '../../i18n';
 
 export default function TagForm() {
+  const { t } = useI18n();
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
@@ -36,7 +38,7 @@ export default function TagForm() {
       }
       navigate('/admin/tags');
     } catch {
-      setError('Failed to save tag');
+      setError(t('tagForm.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,7 @@ export default function TagForm() {
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-        {isEdit ? 'Edit Tag' : 'Add Tag'}
+        {isEdit ? t('tagForm.editTitle') : t('tagForm.addTitle')}
       </h2>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-6 max-w-md">
@@ -55,7 +57,7 @@ export default function TagForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.name')}</label>
             <input
               type="text"
               value={name}
@@ -65,7 +67,7 @@ export default function TagForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.color')}</label>
             <div className="flex items-center gap-3">
               <input
                 type="color"
@@ -84,16 +86,16 @@ export default function TagForm() {
                 className="px-3 py-1 rounded-full text-sm font-medium"
                 style={{ backgroundColor: `${color}20`, color }}
               >
-                Preview
+                {t('tagForm.preview')}
               </span>
             </div>
           </div>
           <div className="flex gap-3 pt-4">
             <button type="submit" disabled={loading} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors duration-200">
-              {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+              {loading ? t('common.saving') : isEdit ? t('common.update') : t('common.create')}
             </button>
             <button type="button" onClick={() => navigate('/admin/tags')} className="px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors duration-200">
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </form>

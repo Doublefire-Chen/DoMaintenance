@@ -1,8 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useI18n } from '../i18n';
 
 export default function Login() {
+  const { t } = useI18n();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -36,7 +39,7 @@ export default function Login() {
       await api.post('/api/auth/login', { username, password });
       navigate('/admin');
     } catch {
-      setError('Invalid username or password');
+      setError(t('auth.invalidCredentials'));
     } finally {
       setLoading(false);
     }
@@ -45,7 +48,7 @@ export default function Login() {
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <div className="animate-pulse text-gray-400">Loading...</div>
+        <div className="animate-pulse text-gray-400">{t('common.loading')}</div>
       </div>
     );
   }
@@ -54,7 +57,10 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
       <div className="w-full max-w-sm">
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Sign In</h1>
+          <div className="flex items-center justify-end mb-4">
+            <LanguageSwitcher />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{t('auth.signIn')}</h1>
 
           {error && (
             <div className="mb-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg">
@@ -65,7 +71,7 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Username
+                {t('common.username')}
               </label>
               <input
                 type="text"
@@ -77,7 +83,7 @@ export default function Login() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Password
+                {t('common.password')}
               </label>
               <input
                 type="password"
@@ -92,15 +98,15 @@ export default function Login() {
               disabled={loading}
               className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors duration-200"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? t('auth.signingIn') : t('auth.signIn')}
             </button>
           </form>
 
           {allowRegister && (
             <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
-              Don't have an account?{' '}
+              {t('auth.noAccount')}{' '}
               <Link to="/register" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium">
-                Create one
+                {t('auth.createOne')}
               </Link>
             </p>
           )}

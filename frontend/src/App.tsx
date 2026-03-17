@@ -13,16 +13,19 @@ import Settings from './pages/admin/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 import { GlobeAltIcon, TagIcon, BuildingOfficeIcon, ArrowRightStartOnRectangleIcon, Cog6ToothIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import api from './api/client';
+import LanguageSwitcher from './components/LanguageSwitcher';
+import { useI18n } from './i18n';
 
 function AdminLayout() {
   const location = useLocation();
+  const { t } = useI18n();
 
   const navItems = [
-    { name: 'Domains', path: '/admin/domains', icon: GlobeAltIcon },
-    { name: 'Currencies', path: '/admin/currencies', icon: BanknotesIcon },
-    { name: 'Registrars', path: '/admin/registrars', icon: BuildingOfficeIcon },
-    { name: 'Tags', path: '/admin/tags', icon: TagIcon },
-    { name: 'Settings', path: '/admin/settings', icon: Cog6ToothIcon },
+    { name: t('nav.domains'), path: '/admin/domains', icon: GlobeAltIcon },
+    { name: t('nav.currencies'), path: '/admin/currencies', icon: BanknotesIcon },
+    { name: t('nav.registrars'), path: '/admin/registrars', icon: BuildingOfficeIcon },
+    { name: t('nav.tags'), path: '/admin/tags', icon: TagIcon },
+    { name: t('nav.settings'), path: '/admin/settings', icon: Cog6ToothIcon },
   ];
 
   const handleLogout = async () => {
@@ -37,8 +40,11 @@ function AdminLayout() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex">
       <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col">
         <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-800">
-          <Link to="/" className="text-lg font-bold text-gray-900 dark:text-gray-100">DoMaintenance</Link>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Admin Panel</p>
+          <Link to="/" className="text-lg font-bold text-gray-900 dark:text-gray-100">{t('app.name')}</Link>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('app.adminPanel')}</p>
+          <div className="mt-3">
+            <LanguageSwitcher />
+          </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
@@ -66,7 +72,7 @@ function AdminLayout() {
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 w-full transition-colors duration-200"
           >
             <ArrowRightStartOnRectangleIcon className="h-5 w-5" />
-            Sign Out
+            {t('common.signOut')}
           </button>
         </div>
       </aside>

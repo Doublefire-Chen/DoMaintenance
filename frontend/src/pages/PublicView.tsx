@@ -5,8 +5,11 @@ import type { PublicDomainsResponse, User } from '../types';
 import DomainTable from '../components/DomainTable';
 import CurrencyTotal from '../components/CurrencyTotal';
 import { formatCurrencyOption, isSupportedCurrency } from '../utils/currency';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useI18n } from '../i18n';
 
 export default function PublicView() {
+  const { t } = useI18n();
   const [data, setData] = useState<PublicDomainsResponse | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,10 +27,10 @@ export default function PublicView() {
       })
       .catch((err) => {
         console.error(err);
-        setError('Failed to load domains. Please try again later.');
+        setError(t('public.loadError'));
       })
       .finally(() => setLoading(false));
-  }, [displayCurrency]);
+  }, [displayCurrency, t]);
 
   useEffect(() => {
     fetchDomains();
@@ -84,9 +87,10 @@ export default function PublicView() {
         <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">DoMaintenance</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Domain Management Dashboard</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('public.subtitle')}</p>
           </div>
           <div className="flex items-center gap-4">
+            <LanguageSwitcher />
             {supportedCurrencies.length > 0 && (
               <select
                 value={displayCurrency}
@@ -107,13 +111,13 @@ export default function PublicView() {
                   to="/admin"
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
                 >
-                  Admin
+                  {t('common.admin')}
                 </Link>
                 <button
                   onClick={handleLogout}
                   className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors duration-200"
                 >
-                  Sign Out
+                  {t('common.signOut')}
                 </button>
               </>
             ) : (
@@ -121,7 +125,7 @@ export default function PublicView() {
                 to="/login"
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
               >
-                Login
+                {t('common.login')}
               </Link>
             )}
           </div>
@@ -144,7 +148,7 @@ export default function PublicView() {
               onClick={fetchDomains}
               className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors duration-200"
             >
-              Retry
+              {t('common.retry')}
             </button>
           </div>
         ) : data ? (

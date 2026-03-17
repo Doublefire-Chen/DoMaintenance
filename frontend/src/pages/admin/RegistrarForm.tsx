@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/client';
+import { useI18n } from '../../i18n';
 
 export default function RegistrarForm() {
+  const { t } = useI18n();
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
@@ -37,7 +39,7 @@ export default function RegistrarForm() {
       }
       navigate('/admin/registrars');
     } catch {
-      setError('Failed to save registrar');
+      setError(t('registrarForm.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -46,7 +48,7 @@ export default function RegistrarForm() {
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-        {isEdit ? 'Edit Registrar' : 'Add Registrar'}
+        {isEdit ? t('registrarForm.editTitle') : t('registrarForm.addTitle')}
       </h2>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-6 max-w-md">
@@ -56,7 +58,7 @@ export default function RegistrarForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.name')}</label>
             <input
               type="text"
               value={name}
@@ -66,7 +68,7 @@ export default function RegistrarForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Website</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.website')}</label>
             <input
               type="text"
               value={website}
@@ -77,10 +79,10 @@ export default function RegistrarForm() {
           </div>
           <div className="flex gap-3 pt-4">
             <button type="submit" disabled={loading} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors duration-200">
-              {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+              {loading ? t('common.saving') : isEdit ? t('common.update') : t('common.create')}
             </button>
             <button type="button" onClick={() => navigate('/admin/registrars')} className="px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors duration-200">
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </form>

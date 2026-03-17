@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../api/client';
 import type { Tag } from '../../types';
+import { useI18n } from '../../i18n';
 
 export default function TagList() {
+  const { t } = useI18n();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -20,7 +22,7 @@ export default function TagList() {
   useEffect(() => { fetchTags(); }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure?')) return;
+    if (!confirm(t('tags.deleteConfirm'))) return;
     try {
       await api.delete(`/api/admin/tags/${id}`);
       fetchTags();
@@ -32,13 +34,13 @@ export default function TagList() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Tags</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('tags.title')}</h2>
         <Link
           to="/admin/tags/new"
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200"
         >
           <PlusIcon className="h-4 w-4" />
-          Add Tag
+          {t('tags.addTag')}
         </Link>
       </div>
 
@@ -53,9 +55,9 @@ export default function TagList() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Name</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Color</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('common.name')}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('common.color')}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -82,8 +84,8 @@ export default function TagList() {
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => navigate(`/admin/tags/${tag.id}/edit`)} className="text-sm text-indigo-600 hover:text-indigo-800">Edit</button>
-                      <button onClick={() => handleDelete(tag.id)} className="text-sm text-red-600 hover:text-red-800">Delete</button>
+                      <button onClick={() => navigate(`/admin/tags/${tag.id}/edit`)} className="text-sm text-indigo-600 hover:text-indigo-800">{t('common.edit')}</button>
+                      <button onClick={() => handleDelete(tag.id)} className="text-sm text-red-600 hover:text-red-800">{t('common.delete')}</button>
                     </div>
                   </td>
                 </tr>
@@ -91,7 +93,7 @@ export default function TagList() {
             </tbody>
           </table>
           {tags.length === 0 && (
-            <div className="text-center py-12 text-gray-500">No tags yet.</div>
+            <div className="text-center py-12 text-gray-500">{t('tags.noTags')}</div>
           )}
         </div>
       )}

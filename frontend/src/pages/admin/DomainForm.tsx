@@ -4,6 +4,7 @@ import api from '../../api/client';
 import type { Registrar, Tag } from '../../types';
 import { currencyOptions, normalizeCurrencyCode } from '../../utils/currency';
 import { fromDateTimeLocalInputValue, toDateTimeLocalInputValue } from '../../utils/date';
+import { useI18n } from '../../i18n';
 
 interface DomainFormData {
   name: string;
@@ -20,6 +21,7 @@ interface DomainFormData {
 }
 
 export default function DomainForm() {
+  const { t } = useI18n();
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
@@ -96,16 +98,19 @@ export default function DomainForm() {
         setForm((prev) => ({ ...prev, ...updates }));
         setLookupStatus('success');
         setLookupMessage(
-          `Fetched registration: ${data.registration_date || 'N/A'} • expiration: ${data.expiration_date || 'N/A'}`,
+          t('domainForm.fetchedDates', {
+            registration: data.registration_date || 'N/A',
+            expiration: data.expiration_date || 'N/A',
+          }),
         );
       } else {
         setLookupStatus('error');
-        setLookupMessage('No date info found for this domain');
+        setLookupMessage(t('domainForm.noDateInfo'));
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       setLookupStatus('error');
-      setLookupMessage(msg || 'Could not look up domain info. You can enter dates manually.');
+      setLookupMessage(msg || t('domainForm.lookupFallback'));
     }
   };
 
@@ -136,7 +141,7 @@ export default function DomainForm() {
       }
       navigate('/admin/domains');
     } catch {
-      setError('Failed to save domain');
+      setError(t('domainForm.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -154,7 +159,7 @@ export default function DomainForm() {
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-        {isEdit ? 'Edit Domain' : 'Add Domain'}
+        {isEdit ? t('domainForm.editTitle') : t('domainForm.addTitle')}
       </h2>
 
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-6 max-w-2xl">
@@ -166,7 +171,7 @@ export default function DomainForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Domain Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('domainForm.domainName')}</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -184,7 +189,7 @@ export default function DomainForm() {
                   disabled={lookupStatus === 'loading' || !form.name.includes('.')}
                   className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 whitespace-nowrap"
                 >
-                  {lookupStatus === 'loading' ? 'Looking up...' : 'Fetch Dates'}
+                  {lookupStatus === 'loading' ? t('domainForm.lookingUp') : t('domainForm.fetchDates')}
                 </button>
               )}
             </div>
@@ -197,7 +202,7 @@ export default function DomainForm() {
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display Order</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('domainForm.displayOrder')}</label>
               <input
                 type="number"
                 min="0"
@@ -209,20 +214,20 @@ export default function DomainForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registrar</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.registrar')}</label>
               <select
                 value={form.registrar_id}
                 onChange={(e) => setForm({ ...form, registrar_id: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="">None</option>
+                <option value="">{t('common.none')}</option>
                 {registrars.map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </select>
             </div>
             <div className="col-span-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registration Time</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('domainForm.registrationTime')}</label>
               <input
                 type="datetime-local"
                 value={form.registration_date}
@@ -234,7 +239,7 @@ export default function DomainForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expiration Time</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('domainForm.expirationTime')}</label>
               <input
                 type="datetime-local"
                 value={form.expiration_date}
@@ -245,14 +250,14 @@ export default function DomainForm() {
             </div>
             <div className="flex items-end">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Use "Fetch Dates" to autofill registration and expiration from RDAP when available.
+                {t('domainForm.fetchDatesHint')}
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Renewal Days</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('domainForm.renewalDays')}</label>
               <input
                 type="number"
                 value={form.renewal_days}
@@ -261,7 +266,7 @@ export default function DomainForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Renewal Price</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('domainForm.renewalPrice')}</label>
               <input
                 type="number"
                 step="0.01"
@@ -271,7 +276,7 @@ export default function DomainForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Currency</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('domainForm.currency')}</label>
               <select
                 value={form.currency}
                 onChange={(e) => setForm({ ...form, currency: normalizeCurrencyCode(e.target.value) })}
@@ -287,21 +292,21 @@ export default function DomainForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Masking Level</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('domainForm.maskingLevel')}</label>
             <select
               value={form.masking_level}
               onChange={(e) => setForm({ ...form, masking_level: parseInt(e.target.value) })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <option value={0}>0 - Visible</option>
-              <option value={1}>1 - Partial (e******.com)</option>
-              <option value={2}>2 - Heavy (***.com)</option>
-              <option value={3}>3 - Full (***.***)</option>
+              <option value={0}>{t('domainForm.masking0')}</option>
+              <option value={1}>{t('domainForm.masking1')}</option>
+              <option value={2}>{t('domainForm.masking2')}</option>
+              <option value={3}>{t('domainForm.masking3')}</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('domainForm.notes')}</label>
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -312,7 +317,7 @@ export default function DomainForm() {
 
           {tags.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('domainForm.tags')}</label>
               <div className="flex flex-wrap gap-2">
                 {tags.map((tag) => (
                   <button
@@ -341,14 +346,14 @@ export default function DomainForm() {
               disabled={loading}
               className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors duration-200"
             >
-              {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+              {loading ? t('common.saving') : isEdit ? t('common.update') : t('common.create')}
             </button>
             <button
               type="button"
               onClick={() => navigate('/admin/domains')}
               className="px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors duration-200"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </form>

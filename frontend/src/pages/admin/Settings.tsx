@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../api/client';
 import type { DateTimeDisplayFormat } from '../../types';
 import { getDateTimeFormatPreview } from '../../utils/date';
+import { useI18n } from '../../i18n';
 
 const DATE_TIME_FORMAT_OPTIONS: Array<{
   value: DateTimeDisplayFormat;
@@ -13,6 +14,7 @@ const DATE_TIME_FORMAT_OPTIONS: Array<{
 ];
 
 export default function Settings() {
+  const { t } = useI18n();
   const [allowRegister, setAllowRegister] = useState(false);
   const [refreshIntervalHours, setRefreshIntervalHours] = useState('24');
   const [requestDelaySeconds, setRequestDelaySeconds] = useState('60');
@@ -40,10 +42,10 @@ export default function Settings() {
       })
       .catch((err) => {
         console.error(err);
-        setMessage('Failed to load settings.');
+        setMessage(t('settings.loadFailed'));
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   const handleSave = async () => {
     const intervalHours = Math.max(0, parseInt(refreshIntervalHours, 10) || 0);
@@ -64,12 +66,12 @@ export default function Settings() {
       setDateTimeFormat(res.data.date_time_display_format || 'slash_utc_offset');
       setMessage(
         intervalHours > 0
-          ? `Settings saved. Auto refresh runs every ${intervalHours} hour(s).`
-          : 'Settings saved. Auto refresh is disabled.',
+          ? t('settings.saved', { hours: intervalHours })
+          : t('settings.savedDisabled'),
       );
     } catch (err) {
       console.error(err);
-      setMessage('Failed to save settings.');
+      setMessage(t('settings.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -79,12 +81,12 @@ export default function Settings() {
     setPasswordMessage(null);
 
     if (newPassword.length < 8) {
-      setPasswordMessage('New password must be at least 8 characters long.');
+      setPasswordMessage(t('settings.newPasswordShort'));
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      setPasswordMessage('New password confirmation does not match.');
+      setPasswordMessage(t('settings.newPasswordMismatch'));
       return;
     }
 
@@ -95,7 +97,7 @@ export default function Settings() {
         current_password: currentPassword,
         new_password: newPassword,
       });
-      setPasswordMessage(res.data.message || 'Password updated. Redirecting to sign in...');
+      setPasswordMessage(res.data.message || t('settings.passwordUpdatedRedirect'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
@@ -111,7 +113,7 @@ export default function Settings() {
         : undefined;
       const errorMessage = typeof responseError === 'string'
         ? responseError
-        : 'Failed to update password.';
+        : t('settings.passwordUpdateFailed');
       setPasswordMessage(errorMessage);
     } finally {
       setChangingPassword(false);
@@ -134,10 +136,10 @@ export default function Settings() {
       link.download = `domaintenance-export-${dateStamp}.zip`;
       link.click();
       window.URL.revokeObjectURL(url);
-      setMigrationMessage('Project export downloaded.');
+      setMigrationMessage(t('settings.projectExported'));
     } catch (err) {
       console.error(err);
-      setMigrationMessage('Failed to export project data.');
+      setMigrationMessage(t('settings.projectExportFailed'));
     } finally {
       setExportingMigration(false);
     }
@@ -145,11 +147,11 @@ export default function Settings() {
 
   const handleImportMigration = async () => {
     if (!migrationFile) {
-      setMigrationMessage('Select an export file first.');
+      setMigrationMessage(t('settings.selectFileFirst'));
       return;
     }
 
-    if (!confirm('Import will replace the current project data and sign you out. Continue?')) {
+    if (!confirm(t('settings.importConfirm'))) {
       return;
     }
 
@@ -163,7 +165,7 @@ export default function Settings() {
           'Content-Type': 'application/zip',
         },
       });
-      setMigrationMessage(res.data.message || 'Project import completed. Redirecting to sign in...');
+      setMigrationMessage(res.data.message || t('settings.projectImportedRedirect'));
       setMigrationFile(null);
       window.setTimeout(() => {
         window.location.href = '/login';
@@ -177,7 +179,7 @@ export default function Settings() {
         : undefined;
       const errorMessage = typeof responseError === 'string'
         ? responseError
-        : 'Failed to import project data.';
+        : t('settings.projectImportFailed');
       setMigrationMessage(errorMessage);
     } finally {
       setImportingMigration(false);
@@ -187,25 +189,25 @@ export default function Settings() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Settings</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('settings.title')}</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Manage registration access and background domain refresh behavior.
+          {t('settings.subtitle')}
         </p>
       </div>
 
       <div className="space-y-6 max-w-2xl">
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Registration
+            {t('settings.sectionRegistration')}
           </h3>
 
           <label className="flex items-center justify-between gap-4">
             <div>
               <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Allow new account registration
+                {t('settings.allowRegister')}
               </div>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Disable this after the first admin account is created if public sign-up is not needed.
+                {t('settings.allowRegisterHint')}
               </p>
             </div>
             <input
@@ -220,11 +222,11 @@ export default function Settings() {
 
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            WHOIS Refresh
+            {t('settings.sectionWhois')}
           </h3>
 
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Auto Refresh Interval
+            {t('settings.autoRefreshInterval')}
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -236,14 +238,14 @@ export default function Settings() {
               disabled={loading}
               className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            <span className="text-sm text-gray-500 dark:text-gray-400">hours</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{t('common.hours')}</span>
           </div>
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Set to `0` to disable the background refresh task.
+            {t('settings.autoRefreshHint')}
           </p>
 
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-5 mb-1">
-            Delay Between Domain Requests
+            {t('settings.requestDelay')}
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -255,14 +257,14 @@ export default function Settings() {
               disabled={loading}
               className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            <span className="text-sm text-gray-500 dark:text-gray-400">seconds</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{t('common.seconds')}</span>
           </div>
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Applied to both manual refresh and scheduled refresh to avoid RDAP throttling.
+            {t('settings.requestDelayHint')}
           </p>
 
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-5 mb-1">
-            Date and Time Display Format
+            {t('settings.dateTimeFormat')}
           </label>
           <select
             value={dateTimeFormat}
@@ -277,7 +279,7 @@ export default function Settings() {
             ))}
           </select>
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Controls how registration and expiration timestamps are shown across the app, using the viewer&apos;s local timezone.
+            {t('settings.dateTimeFormatHint')}
           </p>
 
           <div className="mt-5">
@@ -286,20 +288,20 @@ export default function Settings() {
               disabled={loading || saving}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save Settings'}
+              {saving ? t('common.saving') : t('settings.saveSettings')}
             </button>
           </div>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Password
+            {t('settings.sectionPassword')}
           </h3>
 
           <div className="space-y-4 max-w-md">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Current Password
+                {t('common.currentPassword')}
               </label>
               <input
                 type="password"
@@ -312,7 +314,7 @@ export default function Settings() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                New Password
+                {t('common.newPassword')}
               </label>
               <input
                 type="password"
@@ -325,7 +327,7 @@ export default function Settings() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Confirm New Password
+                {t('common.confirmNewPassword')}
               </label>
               <input
                 type="password"
@@ -347,7 +349,7 @@ export default function Settings() {
               }
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50"
             >
-              {changingPassword ? 'Updating Password...' : 'Update Password'}
+              {changingPassword ? t('settings.updatingPassword') : t('settings.updatePassword')}
             </button>
 
             {passwordMessage && (
@@ -360,12 +362,12 @@ export default function Settings() {
 
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Migration
+            {t('settings.sectionMigration')}
           </h3>
 
           <div className="space-y-4 max-w-2xl">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Export a true backup zip with `database.sql` from PostgreSQL and favicon files with real extensions. Import verifies the package structure first, then clears the current database and restores it from the backup before signing you out.
+              {t('settings.migrationHint')}
             </p>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -374,7 +376,7 @@ export default function Settings() {
                 disabled={loading || exportingMigration || importingMigration}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors duration-200 disabled:opacity-50"
               >
-                {exportingMigration ? 'Exporting...' : 'Export Project'}
+                {exportingMigration ? t('settings.exporting') : t('settings.exportProject')}
               </button>
 
               <input
@@ -390,13 +392,13 @@ export default function Settings() {
                 disabled={loading || exportingMigration || importingMigration || migrationFile == null}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50"
               >
-                {importingMigration ? 'Importing...' : 'Import Project'}
+                {importingMigration ? t('settings.importing') : t('settings.importProject')}
               </button>
             </div>
 
             {migrationFile && (
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                Selected file: {migrationFile.name}
+                {t('common.selectedFile', { name: migrationFile.name })}
               </div>
             )}
 

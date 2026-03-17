@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../api/client';
 import type { Registrar } from '../../types';
+import { useI18n } from '../../i18n';
 
 export default function RegistrarList() {
+  const { t } = useI18n();
   const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
   const [registrars, setRegistrars] = useState<Registrar[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,7 @@ export default function RegistrarList() {
   useEffect(() => { fetchRegistrars(); }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure?')) return;
+    if (!confirm(t('registrars.deleteConfirm'))) return;
     try {
       await api.delete(`/api/admin/registrars/${id}`);
       fetchRegistrars();
@@ -54,11 +56,16 @@ export default function RegistrarList() {
         setHiddenRegistrarFaviconIds((prev) => prev.filter((id) => id !== registrarId));
       }
       setMessage(
-        `Refreshed favicons for ${registrarName}: ${summary.fetched} fetched, ${summary.covered_domains} domains covered${summary.failed > 0 ? `, ${summary.failed} failed` : ''}.`,
+        t('registrars.refreshSummary', {
+          name: registrarName,
+          fetched: summary.fetched,
+          covered: summary.covered_domains,
+          failedSuffix: summary.failed > 0 ? t('domains.failedSuffix', { count: summary.failed }) : '',
+        }),
       );
     } catch (err) {
       console.error(err);
-      setMessage(`Failed to refresh favicons for ${registrarName}.`);
+      setMessage(t('registrars.refreshFail', { name: registrarName }));
     } finally {
       setRefreshingRegistrarIds((prev) => prev.filter((id) => id !== registrarId));
     }
@@ -67,13 +74,13 @@ export default function RegistrarList() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Registrars</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('registrars.title')}</h2>
         <Link
           to="/admin/registrars/new"
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200"
         >
           <PlusIcon className="h-4 w-4" />
-          Add Registrar
+          {t('registrars.addRegistrar')}
         </Link>
       </div>
 
@@ -94,9 +101,9 @@ export default function RegistrarList() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Name</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Website</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('common.name')}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('common.website')}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -141,10 +148,10 @@ export default function RegistrarList() {
                         disabled={refreshingRegistrarIds.includes(reg.id)}
                         className="text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
                       >
-                        {refreshingRegistrarIds.includes(reg.id) ? 'Refreshing Favicons...' : 'Refresh Favicons'}
+                        {refreshingRegistrarIds.includes(reg.id) ? t('registrars.refreshingFavicons') : t('registrars.refreshFavicons')}
                       </button>
-                      <button onClick={() => navigate(`/admin/registrars/${reg.id}/edit`)} className="text-sm text-indigo-600 hover:text-indigo-800">Edit</button>
-                      <button onClick={() => handleDelete(reg.id)} className="text-sm text-red-600 hover:text-red-800">Delete</button>
+                      <button onClick={() => navigate(`/admin/registrars/${reg.id}/edit`)} className="text-sm text-indigo-600 hover:text-indigo-800">{t('common.edit')}</button>
+                      <button onClick={() => handleDelete(reg.id)} className="text-sm text-red-600 hover:text-red-800">{t('common.delete')}</button>
                     </div>
                   </td>
                 </tr>
@@ -152,7 +159,7 @@ export default function RegistrarList() {
             </tbody>
           </table>
           {registrars.length === 0 && (
-            <div className="text-center py-12 text-gray-500">No registrars yet.</div>
+            <div className="text-center py-12 text-gray-500">{t('registrars.noRegistrars')}</div>
           )}
         </div>
       )}

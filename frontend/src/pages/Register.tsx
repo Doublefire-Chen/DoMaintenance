@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useI18n } from '../i18n';
 
 export default function Register() {
+    const { t } = useI18n();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -20,7 +23,7 @@ export default function Register() {
             navigate('/admin');
         } catch (err: unknown) {
             const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-            setError(msg || 'Failed to create account');
+            setError(msg || t('auth.failedCreateAccount'));
         } finally {
             setLoading(false);
         }
@@ -30,9 +33,12 @@ export default function Register() {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
             <div className="w-full max-w-sm">
                 <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-8">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Create Account</h1>
+                    <div className="flex items-center justify-end mb-4">
+                        <LanguageSwitcher />
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">{t('auth.createAccount')}</h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                        Set up your credentials to get started.
+                        {t('auth.createAccountHint')}
                     </p>
 
                     {error && (
@@ -44,7 +50,7 @@ export default function Register() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Username
+                                {t('common.username')}
                             </label>
                             <input
                                 type="text"
@@ -56,7 +62,7 @@ export default function Register() {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Password
+                                {t('common.password')}
                             </label>
                             <input
                                 type="password"
@@ -71,14 +77,14 @@ export default function Register() {
                             disabled={loading}
                             className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors duration-200"
                         >
-                            {loading ? 'Creating...' : 'Create Account'}
+                            {loading ? t('auth.creating') : t('auth.createAccount')}
                         </button>
                     </form>
 
                     <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                        Already have an account?{' '}
+                        {t('auth.alreadyHaveAccount')}{' '}
                         <Link to="/login" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium">
-                            Sign in
+                            {t('auth.signInLink')}
                         </Link>
                     </p>
                 </div>

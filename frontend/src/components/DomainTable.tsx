@@ -3,6 +3,7 @@ import ExpirationBar from './ExpirationBar';
 import MaskedDomain from './MaskedDomain';
 import { formatCurrencyAmount } from '../utils/currency';
 import { formatDateTime, formatRegisteredDuration } from '../utils/date';
+import { useI18n } from '../i18n';
 
 interface DomainTableProps {
   domains: PublicDomain[];
@@ -22,6 +23,7 @@ export default function DomainTable({
   onDelete,
 }: DomainTableProps) {
   const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const { t } = useI18n();
   const shouldShowConvertedPrice = (domainCurrency: string) => {
     if (!displayCurrency) {
       return false;
@@ -35,13 +37,13 @@ export default function DomainTable({
       <table className="w-full">
         <thead>
           <tr className="border-b border-gray-200 dark:border-gray-700">
-            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Domain</th>
-            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Registrar</th>
-            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Expiration</th>
-            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Price</th>
-            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Tags</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">{t('common.domain')}</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">{t('common.registrar')}</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">{t('domains.expires')}</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">{t('common.price')}</th>
+            <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">{t('common.tags')}</th>
             {showActions && (
-              <th className="text-right py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Actions</th>
+              <th className="text-right py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">{t('common.actions')}</th>
             )}
           </tr>
         </thead>
@@ -56,7 +58,10 @@ export default function DomainTable({
                   <MaskedDomain name={domain.name} />
                   {domain.registration_date && domain.registered_days != null && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Registered {formatDateTime(domain.registration_date, dateTimeFormat) || domain.registration_date} • {formatRegisteredDuration(domain.registered_days)} ago
+                      {t('public.registeredAt', {
+                        date: formatDateTime(domain.registration_date, dateTimeFormat) || '',
+                        duration: formatRegisteredDuration(domain.registered_days) || '',
+                      })}
                     </div>
                   )}
                 </div>
@@ -89,7 +94,9 @@ export default function DomainTable({
                     status={domain.status}
                   />
                   <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Expires {formatDateTime(domain.expiration_date, dateTimeFormat) || domain.expiration_date}
+                    {t('public.expiresAt', {
+                      date: formatDateTime(domain.expiration_date, dateTimeFormat) || domain.expiration_date,
+                    })}
                   </div>
                 </div>
               </td>
@@ -131,13 +138,13 @@ export default function DomainTable({
                       onClick={() => onEdit?.((domain as unknown as { id: string }).id)}
                       className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                     >
-                      Edit
+                      {t('common.edit')}
                     </button>
                     <button
                       onClick={() => onDelete?.((domain as unknown as { id: string }).id)}
                       className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                     >
-                      Delete
+                      {t('common.delete')}
                     </button>
                   </div>
                 </td>
@@ -148,7 +155,7 @@ export default function DomainTable({
       </table>
       {domains.length === 0 && (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          No domains found.
+          {t('public.noDomains')}
         </div>
       )}
     </div>

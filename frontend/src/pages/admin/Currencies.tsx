@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client';
 import { formatCurrencyOption, isSupportedCurrency, normalizeCurrencyCode } from '../../utils/currency';
+import { useI18n } from '../../i18n';
 
 interface CurrencyRate {
   code: string;
@@ -18,6 +19,7 @@ function formatRate(rate: string | number): string {
 }
 
 export default function Currencies() {
+  const { t } = useI18n();
   const [data, setData] = useState<CurrencyStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export default function Currencies() {
       .then((res) => setData(res.data))
       .catch((err) => {
         console.error(err);
-        setError('Failed to load currency status.');
+        setError(t('currencies.loadError'));
       })
       .finally(() => setLoading(false));
   };
@@ -43,16 +45,16 @@ export default function Currencies() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Currencies</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('currencies.title')}</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Inspect the cached currency rates and the last successful fetch time.
+            {t('currencies.subtitle')}
           </p>
         </div>
         <button
           onClick={fetchCurrencies}
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200"
         >
-          Refresh
+          {t('common.refresh')}
         </button>
       </div>
 
@@ -76,7 +78,7 @@ export default function Currencies() {
             return (
               <>
           <div className="mb-4 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Last fetched</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('currencies.lastFetched')}</p>
             <p className="text-base font-medium text-gray-900 dark:text-gray-100 mt-1">
               {new Date(data.fetched_at).toLocaleString()}
             </p>
@@ -86,9 +88,9 @@ export default function Currencies() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Currency</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Label</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rate vs 🇺🇸 $ (USD)</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('currencies.currency')}</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('currencies.label')}</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('currencies.rateVsUsd')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,7 +106,10 @@ export default function Currencies() {
                       {formatCurrencyOption(currency.code)}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
-                      {`1 🇺🇸 $ (USD) = ${formatRate(currency.rate)} ${formatCurrencyOption(currency.code)}`}
+                      {t('currencies.rateRow', {
+                        rate: formatRate(currency.rate),
+                        label: formatCurrencyOption(currency.code),
+                      })}
                     </td>
                   </tr>
                 ))}
