@@ -1,3 +1,4 @@
+import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { DateTimeDisplayFormat, PublicDomain } from '../types';
 import ExpirationBar from './ExpirationBar';
 import MaskedDomain from './MaskedDomain';
@@ -23,7 +24,8 @@ export default function DomainTable({
   onDelete,
 }: DomainTableProps) {
   const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
+  const actionButtonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200';
   const shouldShowConvertedPrice = (domainCurrency: string) => {
     if (!displayCurrency) {
       return false;
@@ -60,7 +62,7 @@ export default function DomainTable({
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {t('public.registeredAt', {
                         date: formatDateTime(domain.registration_date, dateTimeFormat) || '',
-                        duration: formatRegisteredDuration(domain.registered_days) || '',
+                        duration: formatRegisteredDuration(domain.registered_days, locale) || '',
                       })}
                     </div>
                   )}
@@ -136,15 +138,19 @@ export default function DomainTable({
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => onEdit?.((domain as unknown as { id: string }).id)}
-                      className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                      title={t('common.edit')}
+                      aria-label={t('common.edit')}
+                      className={`${actionButtonClass} text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-300`}
                     >
-                      {t('common.edit')}
+                      <PencilSquareIcon className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => onDelete?.((domain as unknown as { id: string }).id)}
-                      className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                      title={t('common.delete')}
+                      aria-label={t('common.delete')}
+                      className={`${actionButtonClass} text-red-600 hover:bg-red-50 hover:text-red-800 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300`}
                     >
-                      {t('common.delete')}
+                      <TrashIcon className="h-4 w-4" />
                     </button>
                   </div>
                 </td>

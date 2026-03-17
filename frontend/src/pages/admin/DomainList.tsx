@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bars3Icon, PlusIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, Bars3Icon, PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../api/client';
 import type { DateTimeDisplayFormat, Domain } from '../../types';
 import { formatCurrencyAmount } from '../../utils/currency';
@@ -8,7 +8,7 @@ import { daysSince, daysUntil, formatDateTime, formatRegisteredDuration } from '
 import { useI18n } from '../../i18n';
 
 export default function DomainList() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
   const [domains, setDomains] = useState<Domain[]>([]);
   const [dateTimeFormat, setDateTimeFormat] = useState<DateTimeDisplayFormat>('slash_utc_offset');
@@ -23,6 +23,7 @@ export default function DomainList() {
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const navigate = useNavigate();
   const displayedDomains = reorderDraft ?? domains;
+  const actionButtonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200 disabled:opacity-50';
 
   const fetchDomains = async () => {
     setLoading(true);
@@ -374,7 +375,7 @@ export default function DomainList() {
                         <div>{formatDateTime(domain.registration_date, dateTimeFormat) || domain.registration_date}</div>
                         <div className="text-xs text-gray-400">
                           {(() => {
-                            const registeredFor = formatRegisteredDuration(daysSince(domain.registration_date));
+                            const registeredFor = formatRegisteredDuration(daysSince(domain.registration_date), locale);
                             return registeredFor ? t('domains.registeredFor', { duration: registeredFor }) : t('domains.registrationUnavailable');
                           })()}
                         </div>
@@ -383,7 +384,7 @@ export default function DomainList() {
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
                     {(() => {
-                      const remaining = formatRegisteredDuration(daysUntil(domain.expiration_date));
+                      const remaining = formatRegisteredDuration(daysUntil(domain.expiration_date), locale);
                       return (
                     <div>
                       <div>{formatDateTime(domain.expiration_date, dateTimeFormat) || domain.expiration_date}</div>
@@ -404,23 +405,29 @@ export default function DomainList() {
                       <button
                         onClick={() => handleRefreshDomain(domain.id, domain.name)}
                         disabled={refreshingDomainIds.includes(domain.id) || isReorderMode}
-                        className="text-sm text-gray-600 hover:text-gray-800 dark:text-gray-300 disabled:opacity-50"
+                        title={refreshingDomainIds.includes(domain.id) ? t('domains.refreshing') : t('domains.refreshRow')}
+                        aria-label={refreshingDomainIds.includes(domain.id) ? t('domains.refreshing') : t('domains.refreshRow')}
+                        className={`${actionButtonClass} text-gray-600 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-300 dark:hover:bg-gray-800`}
                       >
-                        {refreshingDomainIds.includes(domain.id) ? t('domains.refreshing') : t('domains.refreshRow')}
+                        <ArrowPathIcon className={`h-4 w-4 ${refreshingDomainIds.includes(domain.id) ? 'animate-spin' : ''}`} />
                       </button>
                       <button
                         onClick={() => navigate(`/admin/domains/${domain.id}/edit`)}
                         disabled={isReorderMode}
-                        className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 disabled:opacity-50"
+                        title={t('common.edit')}
+                        aria-label={t('common.edit')}
+                        className={`${actionButtonClass} text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20`}
                       >
-                        {t('common.edit')}
+                        <PencilSquareIcon className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(domain.id)}
                         disabled={isReorderMode}
-                        className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 disabled:opacity-50"
+                        title={t('common.delete')}
+                        aria-label={t('common.delete')}
+                        className={`${actionButtonClass} text-red-600 hover:bg-red-50 hover:text-red-800 dark:text-red-400 dark:hover:bg-red-900/20`}
                       >
-                        {t('common.delete')}
+                        <TrashIcon className="h-4 w-4" />
                       </button>
                     </div>
                   </td>

@@ -1,6 +1,10 @@
+import type { Locale } from '../i18n';
 import type { DateTimeDisplayFormat } from '../types';
 
-export function formatRegisteredDuration(days: number | null | undefined): string | null {
+export function formatRegisteredDuration(
+  days: number | null | undefined,
+  locale: Locale = 'en',
+): string | null {
   if (days == null || days < 0) {
     return null;
   }
@@ -11,16 +15,16 @@ export function formatRegisteredDuration(days: number | null | undefined): strin
   const parts: string[] = [];
 
   if (years > 0) {
-    parts.push(`${years}y`);
+    parts.push(locale === 'zh-CN' ? `${years}年` : `${years}y`);
   }
   if (months > 0) {
-    parts.push(`${months}mo`);
+    parts.push(locale === 'zh-CN' ? `${months}个月` : `${months}mo`);
   }
   if (remainingDays > 0 || parts.length === 0) {
-    parts.push(`${remainingDays}d`);
+    parts.push(locale === 'zh-CN' ? `${remainingDays}天` : `${remainingDays}d`);
   }
 
-  return parts.join(' ');
+  return locale === 'zh-CN' ? parts.join('') : parts.join(' ');
 }
 
 export function daysSince(dateString: string | null | undefined): number | null {

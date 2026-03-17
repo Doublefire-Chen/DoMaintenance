@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowLeftEndOnRectangleIcon, ArrowPathIcon, ArrowRightStartOnRectangleIcon, ChevronDownIcon, Cog6ToothIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import api from '../api/client';
 import type { PublicDomainsResponse, User } from '../types';
 import DomainTable from '../components/DomainTable';
@@ -10,12 +11,15 @@ import { useI18n } from '../i18n';
 
 export default function PublicView() {
   const { t } = useI18n();
+  const headerControlClass = 'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors duration-200';
   const [data, setData] = useState<PublicDomainsResponse | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState('CNY');
   const [loading, setLoading] = useState(true);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const fetchDomains = useCallback(() => {
     setLoading(true);
@@ -73,11 +77,30 @@ export default function PublicView() {
     }
   }, [displayCurrency, supportedCurrencies]);
 
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!userMenuRef.current?.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
+
   const handleLogout = async () => {
     try {
       await api.post('/api/auth/logout');
     } finally {
       setUser(null);
+      setIsUserMenuOpen(false);
     }
   };
 
@@ -89,13 +112,15 @@ export default function PublicView() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">DoMaintenance</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('public.subtitle')}</p>
           </div>
-          <div className="flex items-center gap-4">
-            <LanguageSwitcher />
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 items-center rounded-lg bg-gray-100 px-3 dark:bg-gray-800">
+              <LanguageSwitcher compact />
+            </div>
             {supportedCurrencies.length > 0 && (
               <select
                 value={displayCurrency}
                 onChange={(e) => setDisplayCurrency(e.target.value)}
-                className="px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="h-10 rounded-lg border border-gray-200 bg-gray-100 px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
               >
                 {supportedCurrencies.map((c) => (
                   <option key={c} value={c}>{formatCurrencyOption(c)}</option>
@@ -104,27 +129,43 @@ export default function PublicView() {
             )}
             {user ? (
               <>
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {user.username}
-                </span>
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-gray-100 px-4 text-sm text-gray-500 transition-colors duration-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                  >
+                    <UserCircleIcon className="h-4 w-4" />
+                    <span>{user.username}</span>
+                    <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 z-20 mt-2 min-w-40 rounded-xl border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 transition-colors duration-200 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                      >
+                        <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
+                        {t('common.signOut')}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <Link
                   to="/admin"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                  className={`${headerControlClass} bg-indigo-600 text-white hover:bg-indigo-700`}
                 >
+                  <Cog6ToothIcon className="h-4 w-4" />
                   {t('common.admin')}
                 </Link>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors duration-200"
-                >
-                  {t('common.signOut')}
-                </button>
               </>
             ) : (
               <Link
                 to="/login"
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                className={`${headerControlClass} bg-indigo-600 text-white hover:bg-indigo-700`}
               >
+                <ArrowLeftEndOnRectangleIcon className="h-4 w-4" />
                 {t('common.login')}
               </Link>
             )}
@@ -146,8 +187,9 @@ export default function PublicView() {
             <p className="text-gray-500 dark:text-gray-400">{error}</p>
             <button
               onClick={fetchDomains}
-              className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors duration-200"
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors duration-200"
             >
+              <ArrowPathIcon className="h-4 w-4" />
               {t('common.retry')}
             </button>
           </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../api/client';
 import type { Registrar } from '../../types';
 import { useI18n } from '../../i18n';
@@ -8,6 +8,7 @@ import { useI18n } from '../../i18n';
 export default function RegistrarList() {
   const { t } = useI18n();
   const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const actionButtonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200 disabled:opacity-50';
   const [registrars, setRegistrars] = useState<Registrar[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshingRegistrarIds, setRefreshingRegistrarIds] = useState<string[]>([]);
@@ -146,12 +147,28 @@ export default function RegistrarList() {
                       <button
                         onClick={() => handleRefreshFavicons(reg.id, reg.name)}
                         disabled={refreshingRegistrarIds.includes(reg.id)}
-                        className="text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                        title={refreshingRegistrarIds.includes(reg.id) ? t('registrars.refreshingFavicons') : t('registrars.refreshFavicons')}
+                        aria-label={refreshingRegistrarIds.includes(reg.id) ? t('registrars.refreshingFavicons') : t('registrars.refreshFavicons')}
+                        className={`${actionButtonClass} text-gray-600 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-300 dark:hover:bg-gray-800`}
                       >
-                        {refreshingRegistrarIds.includes(reg.id) ? t('registrars.refreshingFavicons') : t('registrars.refreshFavicons')}
+                        <ArrowPathIcon className={`h-4 w-4 ${refreshingRegistrarIds.includes(reg.id) ? 'animate-spin' : ''}`} />
                       </button>
-                      <button onClick={() => navigate(`/admin/registrars/${reg.id}/edit`)} className="text-sm text-indigo-600 hover:text-indigo-800">{t('common.edit')}</button>
-                      <button onClick={() => handleDelete(reg.id)} className="text-sm text-red-600 hover:text-red-800">{t('common.delete')}</button>
+                      <button
+                        onClick={() => navigate(`/admin/registrars/${reg.id}/edit`)}
+                        title={t('common.edit')}
+                        aria-label={t('common.edit')}
+                        className={`${actionButtonClass} text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20`}
+                      >
+                        <PencilSquareIcon className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(reg.id)}
+                        title={t('common.delete')}
+                        aria-label={t('common.delete')}
+                        className={`${actionButtonClass} text-red-600 hover:bg-red-50 hover:text-red-800 dark:text-red-400 dark:hover:bg-red-900/20`}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>

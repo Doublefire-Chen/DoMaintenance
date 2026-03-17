@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../api/client';
 import type { Tag } from '../../types';
 import { useI18n } from '../../i18n';
 
 export default function TagList() {
   const { t } = useI18n();
+  const actionButtonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200';
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -84,8 +85,22 @@ export default function TagList() {
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => navigate(`/admin/tags/${tag.id}/edit`)} className="text-sm text-indigo-600 hover:text-indigo-800">{t('common.edit')}</button>
-                      <button onClick={() => handleDelete(tag.id)} className="text-sm text-red-600 hover:text-red-800">{t('common.delete')}</button>
+                      <button
+                        onClick={() => navigate(`/admin/tags/${tag.id}/edit`)}
+                        title={t('common.edit')}
+                        aria-label={t('common.edit')}
+                        className={`${actionButtonClass} text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20`}
+                      >
+                        <PencilSquareIcon className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(tag.id)}
+                        title={t('common.delete')}
+                        aria-label={t('common.delete')}
+                        className={`${actionButtonClass} text-red-600 hover:bg-red-50 hover:text-red-800 dark:text-red-400 dark:hover:bg-red-900/20`}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
