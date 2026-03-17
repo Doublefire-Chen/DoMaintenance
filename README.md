@@ -78,6 +78,8 @@ Create a database and user:
 CREATE USER domaintenance WITH PASSWORD 'strong-password';
 CREATE DATABASE domaintenance OWNER domaintenance;
 GRANT ALL PRIVILEGES ON DATABASE domaintenance TO domaintenance;
+\c domaintenance
+ALTER SCHEMA public OWNER TO domaintenance;
 ```
 
 Load the schema:
@@ -85,6 +87,8 @@ Load the schema:
 ```bash
 psql "postgres://domaintenance:strong-password@localhost:5432/domaintenance" -f db_schema/schema.sql
 ```
+
+The backup restore flow clears and recreates the `public` schema, so `public` must remain owned by `domaintenance`.
 
 ### Step 3: Build Application
 
@@ -310,4 +314,3 @@ Because this flow uses real PostgreSQL tools, `pg_dump` and `psql` must exist on
 - Favicons are intentionally refreshed separately
 
 ---
-
