@@ -14,7 +14,7 @@ export default function TagList() {
 
   const fetchTags = () => {
     setLoading(true);
-    api.get('/api/admin/tags')
+    api.get('/admin/tags')
       .then((res) => setTags(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -25,7 +25,7 @@ export default function TagList() {
   const handleDelete = async (id: string) => {
     if (!confirm(t('tags.deleteConfirm'))) return;
     try {
-      await api.delete(`/api/admin/tags/${id}`);
+      await api.delete(`/admin/tags/${id}`);
       fetchTags();
     } catch (err) {
       console.error(err);

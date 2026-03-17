@@ -18,8 +18,8 @@ export default function Register() {
         setLoading(true);
 
         try {
-            await api.post('/api/auth/register', { username, password });
-            await api.post('/api/auth/login', { username, password });
+            await api.post('/auth/register', { username, password });
+            await api.post('/auth/login', { username, password });
             navigate('/admin');
         } catch (err: unknown) {
             const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;

@@ -148,98 +148,98 @@ async fn main() {
 
     // Public routes
     let public_routes = Router::new()
-        .route("/api/public/domains", get(handlers::public::get_domains))
-        .route("/api/public/favicons/:id", get(handlers::public::get_favicon))
+        .route("/public/domains", get(handlers::public::get_domains))
+        .route("/public/favicons/:id", get(handlers::public::get_favicon))
         .route(
-            "/api/public/registrar-favicons/:id",
+            "/public/registrar-favicons/:id",
             get(handlers::public::get_registrar_favicon),
         )
         .route(
-            "/api/public/currencies",
+            "/public/currencies",
             get(handlers::public::get_currencies),
         );
 
     // Auth routes
     let auth_routes = Router::new()
-        .route("/api/auth/register", post(handlers::auth::register))
-        .route("/api/auth/login", post(handlers::auth::login))
-        .route("/api/auth/logout", post(handlers::auth::logout))
-        .route("/api/auth/me", get(handlers::auth::me))
-        .route("/api/auth/allow-register", get(handlers::auth::allow_register));
+        .route("/auth/register", post(handlers::auth::register))
+        .route("/auth/login", post(handlers::auth::login))
+        .route("/auth/logout", post(handlers::auth::logout))
+        .route("/auth/me", get(handlers::auth::me))
+        .route("/auth/allow-register", get(handlers::auth::allow_register));
 
     // Admin routes (protected)
     let admin_routes = Router::new()
-        .route("/api/admin/domains", get(handlers::domains::list))
-        .route("/api/admin/domains", post(handlers::domains::create))
+        .route("/admin/domains", get(handlers::domains::list))
+        .route("/admin/domains", post(handlers::domains::create))
         .route(
-            "/api/admin/domains/reorder",
+            "/admin/domains/reorder",
             post(handlers::domains::reorder),
         )
         .route(
-            "/api/admin/domains/refresh-whois",
+            "/admin/domains/refresh-whois",
             post(handlers::domains::refresh_all),
         )
         .route(
-            "/api/admin/settings",
+            "/admin/settings",
             get(handlers::settings::get_settings),
         )
         .route(
-            "/api/admin/settings",
+            "/admin/settings",
             put(handlers::settings::update_settings),
         )
         .route(
-            "/api/admin/change-password",
+            "/admin/change-password",
             post(handlers::auth::change_password),
         )
         .route(
-            "/api/admin/migration/export",
+            "/admin/migration/export",
             get(handlers::migration::export_data),
         )
         .route(
-            "/api/admin/migration/import",
+            "/admin/migration/import",
             post(handlers::migration::import_data),
         )
-        .route("/api/admin/currencies", get(handlers::currencies::list))
+        .route("/admin/currencies", get(handlers::currencies::list))
         .route(
-            "/api/admin/whois/:domain",
+            "/admin/whois/:domain",
             get(handlers::domains::lookup),
         )
-        .route("/api/admin/domains/:id", get(handlers::domains::get))
-        .route("/api/admin/domains/:id", put(handlers::domains::update))
+        .route("/admin/domains/:id", get(handlers::domains::get))
+        .route("/admin/domains/:id", put(handlers::domains::update))
         .route(
-            "/api/admin/domains/:id/refresh-favicon",
+            "/admin/domains/:id/refresh-favicon",
             post(handlers::domains::refresh_favicon),
         )
         .route(
-            "/api/admin/domains/:id",
+            "/admin/domains/:id",
             delete(handlers::domains::delete),
         )
-        .route("/api/admin/registrars", get(handlers::registrars::list))
+        .route("/admin/registrars", get(handlers::registrars::list))
         .route(
-            "/api/admin/registrars",
+            "/admin/registrars",
             post(handlers::registrars::create),
         )
         .route(
-            "/api/admin/registrars/:id",
+            "/admin/registrars/:id",
             get(handlers::registrars::get),
         )
         .route(
-            "/api/admin/registrars/:id",
+            "/admin/registrars/:id",
             put(handlers::registrars::update),
         )
         .route(
-            "/api/admin/registrars/:id",
+            "/admin/registrars/:id",
             delete(handlers::registrars::delete),
         )
         .route(
-            "/api/admin/registrars/:id/refresh-favicons",
+            "/admin/registrars/:id/refresh-favicons",
             post(handlers::registrars::refresh_favicons),
         )
-        .route("/api/admin/tags", get(handlers::tags::list))
-        .route("/api/admin/tags", post(handlers::tags::create))
-        .route("/api/admin/tags/:id", get(handlers::tags::get))
-        .route("/api/admin/tags/:id", put(handlers::tags::update))
-        .route("/api/admin/tags/:id", delete(handlers::tags::delete))
+        .route("/admin/tags", get(handlers::tags::list))
+        .route("/admin/tags", post(handlers::tags::create))
+        .route("/admin/tags/:id", get(handlers::tags::get))
+        .route("/admin/tags/:id", put(handlers::tags::update))
+        .route("/admin/tags/:id", delete(handlers::tags::delete))
         .layer(axum_middleware::from_fn_with_state(
             state.db.clone(),
             middleware::auth::require_auth,

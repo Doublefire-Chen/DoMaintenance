@@ -28,7 +28,7 @@ export default function Currencies() {
     setLoading(true);
     setError(null);
 
-    api.get('/api/admin/currencies')
+    api.get('/admin/currencies')
       .then((res) => setData(res.data))
       .catch((err) => {
         console.error(err);

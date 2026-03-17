@@ -19,7 +19,7 @@ export default function RegistrarList() {
 
   const fetchRegistrars = () => {
     setLoading(true);
-    api.get('/api/admin/registrars')
+    api.get('/admin/registrars')
       .then((res) => setRegistrars(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -30,7 +30,7 @@ export default function RegistrarList() {
   const handleDelete = async (id: string) => {
     if (!confirm(t('registrars.deleteConfirm'))) return;
     try {
-      await api.delete(`/api/admin/registrars/${id}`);
+      await api.delete(`/admin/registrars/${id}`);
       fetchRegistrars();
     } catch (err) {
       console.error(err);
@@ -42,7 +42,7 @@ export default function RegistrarList() {
     setMessage(null);
 
     try {
-      const res = await api.post(`/api/admin/registrars/${registrarId}/refresh-favicons`);
+      const res = await api.post(`/admin/registrars/${registrarId}/refresh-favicons`);
       const summary = res.data as {
         fetched: number;
         total_domains: number;
@@ -108,7 +108,7 @@ export default function RegistrarList() {
                       {reg.website ? (
                         <img
                           key={`${reg.id}-${faviconVersionByRegistrarId[reg.id] ?? 0}`}
-                          src={`${apiBaseUrl}/api/public/registrar-favicons/${reg.id}?v=${faviconVersionByRegistrarId[reg.id] ?? 0}`}
+                          src={`${apiBaseUrl}/public/registrar-favicons/${reg.id}?v=${faviconVersionByRegistrarId[reg.id] ?? 0}`}
                           alt=""
                           className="h-5 w-5 rounded"
                           loading="lazy"
@@ -184,7 +184,7 @@ export default function RegistrarList() {
                       {reg.website ? (
                         <img
                           key={`${reg.id}-${faviconVersionByRegistrarId[reg.id] ?? 0}`}
-                          src={`${apiBaseUrl}/api/public/registrar-favicons/${reg.id}?v=${faviconVersionByRegistrarId[reg.id] ?? 0}`}
+                          src={`${apiBaseUrl}/public/registrar-favicons/${reg.id}?v=${faviconVersionByRegistrarId[reg.id] ?? 0}`}
                           alt=""
                           className="h-5 w-5 rounded"
                           loading="lazy"

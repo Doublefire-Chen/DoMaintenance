@@ -17,11 +17,11 @@ export default function Login() {
   useEffect(() => {
     const controller = new AbortController();
 
-    api.get('/api/auth/me', { signal: controller.signal })
+    api.get('/auth/me', { signal: controller.signal })
       .then(() => navigate('/admin'))
       .catch(() => {
         if (controller.signal.aborted) return;
-        api.get('/api/auth/allow-register', { signal: controller.signal })
+        api.get('/auth/allow-register', { signal: controller.signal })
           .then((res) => setAllowRegister(res.data.allow_register === true))
           .catch(() => { })
           .finally(() => { if (!controller.signal.aborted) setChecking(false); });
@@ -36,7 +36,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await api.post('/api/auth/login', { username, password });
+      await api.post('/auth/login', { username, password });
       navigate('/admin');
     } catch {
       setError(t('auth.invalidCredentials'));

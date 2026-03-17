@@ -43,7 +43,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
 ```
 
-Install Node.js if needed. One common option is NodeSource:
+Install Node.js if needed. One simple option is `nvm`:
 
 ```bash
 # Download and install nvm:
@@ -54,10 +54,6 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
 nvm install 24
 # Verify the Node.js version:
 node -v # Should print "v24.14.0".
-# Download and install pnpm:
-corepack enable pnpm
-# Verify pnpm version:
-pnpm -v
 ```
 
 ### Step 1: Clone Repository
@@ -139,7 +135,7 @@ vim .env
 Example frontend `.env`:
 
 ```env
-VITE_API_URL=https://domains.example.com/
+VITE_API_URL=https://api.example.com
 ```
 
 Build the frontend:
@@ -193,8 +189,24 @@ sudo systemctl status domaintenance
 Create `/etc/nginx/sites-available/domaintenance`:
 
 ```nginx
+# Frontend - domains.example.com
 server {
     listen 80;
+    listen [::]:80;
+    server_name domains.example.com;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$server_name$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name domains.example.com;
 
     root /var/www/domaintenance;
@@ -203,8 +215,29 @@ server {
     location / {
         try_files $uri $uri/ /index.html;
     }
+}
 
-    location /api/ {
+# Backend API - api.example.com
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.example.com;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$server_name$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.example.com;
+
+    location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -227,7 +260,7 @@ If you use HTTPS, obtain a certificate after the site is reachable:
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d domains.example.com
+sudo certbot --nginx -d domains.example.com -d api.example.com
 ```
 
 ### Step 6: Access Application

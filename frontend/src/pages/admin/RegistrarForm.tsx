@@ -16,7 +16,7 @@ export default function RegistrarForm() {
 
   useEffect(() => {
     if (isEdit) {
-      api.get(`/api/admin/registrars/${id}`).then((res) => {
+      api.get(`/admin/registrars/${id}`).then((res) => {
         setName(res.data.name);
         setWebsite(res.data.website || '');
       });
@@ -33,9 +33,9 @@ export default function RegistrarForm() {
 
     try {
       if (isEdit) {
-        await api.put(`/api/admin/registrars/${id}`, payload);
+        await api.put(`/admin/registrars/${id}`, payload);
       } else {
-        await api.post('/api/admin/registrars', payload);
+        await api.post('/admin/registrars', payload);
       }
       navigate('/admin/registrars');
     } catch {

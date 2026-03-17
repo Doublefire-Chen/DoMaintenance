@@ -33,7 +33,7 @@ export default function Settings() {
   const [migrationMessage, setMigrationMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get('/api/admin/settings')
+    api.get('/admin/settings')
       .then((res) => {
         setAllowRegister(res.data.allow_register === true);
         setRefreshIntervalHours(String(res.data.whois_refresh_interval_hours));
@@ -54,7 +54,7 @@ export default function Settings() {
     setMessage(null);
 
     try {
-      const res = await api.put('/api/admin/settings', {
+      const res = await api.put('/admin/settings', {
         allow_register: allowRegister,
         whois_refresh_interval_hours: intervalHours,
         whois_request_delay_ms: delaySeconds * 1000,
@@ -93,7 +93,7 @@ export default function Settings() {
     setChangingPassword(true);
 
     try {
-      const res = await api.post('/api/admin/change-password', {
+      const res = await api.post('/admin/change-password', {
         current_password: currentPassword,
         new_password: newPassword,
       });
@@ -125,7 +125,7 @@ export default function Settings() {
     setMigrationMessage(null);
 
     try {
-      const res = await api.get('/api/admin/migration/export', {
+      const res = await api.get('/admin/migration/export', {
         responseType: 'blob',
       });
       const blob = res.data as Blob;
@@ -160,7 +160,7 @@ export default function Settings() {
 
     try {
       const payload = await migrationFile.arrayBuffer();
-      const res = await api.post('/api/admin/migration/import', payload, {
+      const res = await api.post('/admin/migration/import', payload, {
         headers: {
           'Content-Type': 'application/zip',
         },

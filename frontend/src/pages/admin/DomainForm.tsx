@@ -48,15 +48,15 @@ export default function DomainForm() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/api/admin/registrars'),
-      api.get('/api/admin/tags'),
+      api.get('/admin/registrars'),
+      api.get('/admin/tags'),
     ]).then(([regRes, tagRes]) => {
       setRegistrars(regRes.data);
       setTags(tagRes.data);
     });
 
     if (isEdit) {
-      api.get(`/api/admin/domains/${id}`).then((res) => {
+      api.get(`/admin/domains/${id}`).then((res) => {
         const d = res.data;
         setForm({
           name: d.name,
@@ -83,7 +83,7 @@ export default function DomainForm() {
     setLookupMessage('');
 
     try {
-      const res = await api.get(`/api/admin/whois/${encodeURIComponent(domain)}`);
+      const res = await api.get(`/admin/whois/${encodeURIComponent(domain)}`);
       const data = res.data;
       const updates: Partial<DomainFormData> = {};
 
@@ -135,9 +135,9 @@ export default function DomainForm() {
 
     try {
       if (isEdit) {
-        await api.put(`/api/admin/domains/${id}`, payload);
+        await api.put(`/admin/domains/${id}`, payload);
       } else {
-        await api.post('/api/admin/domains', payload);
+        await api.post('/admin/domains', payload);
       }
       navigate('/admin/domains');
     } catch {

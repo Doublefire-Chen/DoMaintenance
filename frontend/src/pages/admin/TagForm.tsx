@@ -16,7 +16,7 @@ export default function TagForm() {
 
   useEffect(() => {
     if (isEdit) {
-      api.get(`/api/admin/tags/${id}`).then((res) => {
+      api.get(`/admin/tags/${id}`).then((res) => {
         setName(res.data.name);
         setColor(res.data.color || '#6366f1');
       });
@@ -32,9 +32,9 @@ export default function TagForm() {
 
     try {
       if (isEdit) {
-        await api.put(`/api/admin/tags/${id}`, payload);
+        await api.put(`/admin/tags/${id}`, payload);
       } else {
-        await api.post('/api/admin/tags', payload);
+        await api.post('/admin/tags', payload);
       }
       navigate('/admin/tags');
     } catch {

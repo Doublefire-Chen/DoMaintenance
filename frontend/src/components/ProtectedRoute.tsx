@@ -12,7 +12,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { t } = useI18n();
 
   useEffect(() => {
-    api.get('/api/auth/me')
+    api.get('/auth/me')
       .then(() => setStatus('authenticated'))
       .catch(() => setStatus('unauthenticated'));
   }, []);

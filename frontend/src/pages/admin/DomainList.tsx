@@ -27,7 +27,7 @@ export default function DomainList() {
 
   const fetchDomains = async () => {
     setLoading(true);
-    return api.get('/api/admin/domains')
+    return api.get('/admin/domains')
       .then((res) => {
         setDomains(res.data);
         setSelectedDomainIds((prev) =>
@@ -40,7 +40,7 @@ export default function DomainList() {
 
   useEffect(() => {
     fetchDomains();
-    api.get('/api/admin/settings')
+    api.get('/admin/settings')
       .then((res) => setDateTimeFormat(res.data.date_time_display_format || 'slash_utc_offset'))
       .catch(console.error);
   }, []);
@@ -48,7 +48,7 @@ export default function DomainList() {
   const handleDelete = async (id: string) => {
     if (!confirm(t('domains.deleteConfirm'))) return;
     try {
-      await api.delete(`/api/admin/domains/${id}`);
+      await api.delete(`/admin/domains/${id}`);
       fetchDomains();
     } catch (err) {
       console.error(err);
@@ -63,7 +63,7 @@ export default function DomainList() {
       const payload = selectedDomainIds.length > 0
         ? { domain_ids: selectedDomainIds }
         : {};
-      const res = await api.post('/api/admin/domains/refresh-whois', payload);
+      const res = await api.post('/admin/domains/refresh-whois', payload);
       const summary = res.data as {
         total_domains: number;
         updated: number;
@@ -94,7 +94,7 @@ export default function DomainList() {
     setRefreshMessage(null);
 
     try {
-      const res = await api.post('/api/admin/domains/refresh-whois', {
+      const res = await api.post('/admin/domains/refresh-whois', {
         domain_ids: [id],
       });
       const summary = res.data as {
@@ -138,7 +138,7 @@ export default function DomainList() {
     const persistedOrder = reorderedDomains.map((domain) => domain.id);
 
     try {
-      await api.post('/api/admin/domains/reorder', {
+      await api.post('/admin/domains/reorder', {
         domain_ids: persistedOrder,
       });
       await fetchDomains();

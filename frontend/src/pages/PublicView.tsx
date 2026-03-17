@@ -26,7 +26,7 @@ export default function PublicView() {
   const fetchDomains = useCallback(() => {
     setLoading(true);
     setError(null);
-    api.get(`/api/public/domains?display_currency=${displayCurrency}`)
+    api.get(`/public/domains?display_currency=${displayCurrency}`)
       .then((res) => {
         setData(res.data);
         setError(null);
@@ -45,7 +45,7 @@ export default function PublicView() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch(`${apiBaseUrl}/api/auth/me`, {
+    fetch(`${apiBaseUrl}/auth/me`, {
       credentials: 'include',
       signal: controller.signal,
     })
@@ -117,7 +117,7 @@ export default function PublicView() {
 
   const handleLogout = async () => {
     try {
-      await api.post('/api/auth/logout');
+      await api.post('/auth/logout');
     } finally {
       setUser(null);
       setIsUserMenuOpen(false);

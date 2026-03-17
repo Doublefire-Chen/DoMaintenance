@@ -34,7 +34,7 @@ pub async fn clear_storage() -> Result<(), String> {
 
 pub async fn favicon_url(domain_id: Uuid) -> Option<String> {
     if fs::metadata(favicon_path(domain_id)).await.is_ok() {
-        Some(format!("/api/public/favicons/{}", domain_id))
+        Some(format!("/public/favicons/{}", domain_id))
     } else {
         None
     }
@@ -48,7 +48,7 @@ pub async fn read_favicon(domain_id: Uuid) -> Result<Vec<u8>, String> {
 
 pub async fn registrar_favicon_url(registrar_id: Uuid) -> Option<String> {
     if fs::metadata(registrar_favicon_path(registrar_id)).await.is_ok() {
-        Some(format!("/api/public/registrar-favicons/{}", registrar_id))
+        Some(format!("/public/registrar-favicons/{}", registrar_id))
     } else {
         None
     }
