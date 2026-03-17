@@ -12,6 +12,7 @@ import TagList from './pages/admin/TagList';
 import TagForm from './pages/admin/TagForm';
 import Settings from './pages/admin/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
+import Brand from './components/Brand';
 import { GlobeAltIcon, TagIcon, BuildingOfficeIcon, ArrowRightStartOnRectangleIcon, Cog6ToothIcon, BanknotesIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from './api/client';
 import LanguageSwitcher from './components/LanguageSwitcher';
@@ -46,8 +47,10 @@ function AdminLayout() {
     <aside className="flex h-full w-72 max-w-[85vw] flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
       <div className="flex items-start justify-between px-6 py-5 border-b border-gray-200 dark:border-gray-800">
         <div>
-          <Link to="/" className="text-lg font-bold text-gray-900 dark:text-gray-100">{t('app.name')}</Link>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('app.adminPanel')}</p>
+          <Link to="/" className="inline-flex">
+            <Brand compact />
+          </Link>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('app.adminPanel')}</p>
           <div className="mt-3">
             <LanguageSwitcher />
           </div>
@@ -121,7 +124,9 @@ function AdminLayout() {
           >
             <Bars3Icon className="h-6 w-6" />
           </button>
-          <Link to="/" className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('app.name')}</Link>
+          <Link to="/" className="inline-flex">
+            <Brand iconOnly className="h-10 w-10" />
+          </Link>
           <div className="w-10" />
         </div>
         <main className="p-4 sm:p-6 lg:p-8">

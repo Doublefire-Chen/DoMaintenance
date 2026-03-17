@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeftEndOnRectangleIcon, ArrowPathIcon, ArrowRightStartOnRectangleIcon, Bars3Icon, ChevronDownIcon, Cog6ToothIcon, UserCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import api from '../api/client';
 import type { PublicDomainsResponse, User } from '../types';
+import Brand from '../components/Brand';
 import DomainTable from '../components/DomainTable';
 import CurrencyTotal from '../components/CurrencyTotal';
 import { formatCurrencyOption, isSupportedCurrency } from '../utils/currency';
@@ -131,8 +132,8 @@ export default function PublicView() {
         <div className="max-w-6xl mx-auto px-4 py-5 sm:px-6 sm:py-6">
           <div className="flex items-start justify-between gap-4 lg:items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">DoMaintenance</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('public.subtitle')}</p>
+            <Brand />
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{t('public.subtitle')}</p>
           </div>
             <div className="lg:hidden" ref={mobileMenuRef}>
               <button
