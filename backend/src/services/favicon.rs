@@ -1,27 +1,43 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
 
 use reqwest::header::CONTENT_TYPE;
 use tokio::fs;
 use uuid::Uuid;
 
-const FAVICON_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/storage/favicons");
+static FAVICON_DIR: OnceLock<PathBuf> = OnceLock::new();
+
+fn favicon_dir() -> &'static PathBuf {
+    FAVICON_DIR.get_or_init(|| {
+        let storage_root = std::env::var("STORAGE_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| {
+                std::env::current_dir()
+                    .unwrap_or_else(|_| PathBuf::from("."))
+                    .join("storage")
+            });
+        storage_root.join("favicons")
+    })
+}
 
 fn favicon_path(domain_id: Uuid) -> PathBuf {
-    Path::new(FAVICON_DIR).join(domain_id.to_string())
+    Path::new(favicon_dir()).join(domain_id.to_string())
 }
 
 fn registrar_favicon_path(registrar_id: Uuid) -> PathBuf {
-    Path::new(FAVICON_DIR).join(format!("registrar-{}", registrar_id))
+    Path::new(favicon_dir()).join(format!("registrar-{}", registrar_id))
 }
 
 pub async fn ensure_storage_dir() -> Result<(), String> {
-    fs::create_dir_all(FAVICON_DIR)
+    fs::create_dir_all(favicon_dir())
         .await
         .map_err(|e| format!("Failed to create favicon storage directory: {}", e))
 }
 
 pub async fn clear_storage() -> Result<(), String> {
-    match fs::remove_dir_all(FAVICON_DIR).await {
+    match fs::remove_dir_all(favicon_dir()).await {
         Ok(_) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
         Err(err) => {

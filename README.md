@@ -107,6 +107,7 @@ DATABASE_URL=postgres://domaintenance:strong-password@localhost:5432/domaintenan
 SERVER_HOST=127.0.0.1
 SERVER_PORT=3000
 FRONTEND_URL=https://domains.example.com
+STORAGE_DIR=/opt/domaintenance/storage
 RUST_LOG=info
 ```
 
@@ -126,6 +127,8 @@ sudo mkdir -p /opt/domaintenance/storage
 sudo chown -R www-data:www-data /opt/domaintenance
 sudo chmod -R 755 /opt/domaintenance
 ```
+
+`STORAGE_DIR` is used for favicon storage and backup restore assets. In production it should point at the writable runtime directory, such as `/opt/domaintenance/storage`.
 
 #### Build frontend
 
