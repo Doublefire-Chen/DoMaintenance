@@ -26,6 +26,51 @@ export default function DomainTable({
   const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
   const { locale, t } = useI18n();
   const actionButtonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200';
+
+  const normalizeWebsiteUrl = (website: string) => (
+    /^https?:\/\//i.test(website) ? website : `https://${website}`
+  );
+
+  const renderRegistrar = (domain: PublicDomain) => {
+    if (!domain.registrar) {
+      return '\u2014';
+    }
+
+    const content = (
+      <>
+        {domain.favicon_url ? (
+          <img
+            src={`${apiBaseUrl}${domain.favicon_url}`}
+            alt=""
+            className="h-5 w-5 rounded"
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          <div className="h-5 w-5 rounded bg-gray-100 dark:bg-gray-800" />
+        )}
+        <span>{domain.registrar.name}</span>
+      </>
+    );
+
+    if (!domain.registrar.website) {
+      return <div className="flex items-center gap-2">{content}</div>;
+    }
+
+    return (
+      <a
+        href={normalizeWebsiteUrl(domain.registrar.website)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 text-inherit transition-colors duration-200 hover:text-indigo-600 dark:hover:text-indigo-400"
+      >
+        {content}
+      </a>
+    );
+  };
+
   const shouldShowConvertedPrice = (domainCurrency: string) => {
     if (!displayCurrency) {
       return false;
@@ -82,24 +127,7 @@ export default function DomainTable({
                   {t('common.registrar')}
                 </div>
                 <div className="text-gray-600 dark:text-gray-400">
-                  {domain.registrar ? (
-                    <div className="flex items-center gap-2">
-                      {domain.favicon_url ? (
-                        <img
-                          src={`${apiBaseUrl}${domain.favicon_url}`}
-                          alt=""
-                          className="h-5 w-5 rounded"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="h-5 w-5 rounded bg-gray-100 dark:bg-gray-800" />
-                      )}
-                      <span>{domain.registrar.name}</span>
-                    </div>
-                  ) : '\u2014'}
+                  {renderRegistrar(domain)}
                 </div>
               </div>
 
@@ -198,24 +226,7 @@ export default function DomainTable({
                 </div>
               </td>
               <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
-                {domain.registrar ? (
-                  <div className="flex items-center gap-2">
-                    {domain.favicon_url ? (
-                      <img
-                        src={`${apiBaseUrl}${domain.favicon_url}`}
-                        alt=""
-                        className="h-5 w-5 rounded"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="h-5 w-5 rounded bg-gray-100 dark:bg-gray-800" />
-                    )}
-                    <span>{domain.registrar.name}</span>
-                  </div>
-                ) : '\u2014'}
+                {renderRegistrar(domain)}
               </td>
               <td className="py-3 px-4">
                 <div>
