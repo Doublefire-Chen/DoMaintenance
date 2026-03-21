@@ -14,6 +14,7 @@ const WHOIS_REQUEST_DELAY_SETTING_KEY: &str = "whois_request_delay_ms";
 const DATE_TIME_DISPLAY_FORMAT_SETTING_KEY: &str = "date_time_display_format";
 
 pub const DEFAULT_WHOIS_REQUEST_DELAY_MS: u64 = 60_000;
+pub const MAX_MANUAL_WHOIS_REQUEST_DELAY_MS: u64 = 1_000;
 pub const DEFAULT_DATE_TIME_DISPLAY_FORMAT: &str = "slash_utc_offset";
 
 #[derive(Clone)]

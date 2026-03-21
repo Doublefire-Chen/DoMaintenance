@@ -254,7 +254,17 @@ pub async fn refresh_all(
         tracing::warn!("Currency refresh failed before WHOIS refresh: {}", err);
     }
 
-    let whois_request_delay_ms = state.app_settings.whois_request_delay_ms().await;
+    let configured_whois_request_delay_ms = state.app_settings.whois_request_delay_ms().await;
+    let whois_request_delay_ms = configured_whois_request_delay_ms
+        .min(crate::services::app_settings::MAX_MANUAL_WHOIS_REQUEST_DELAY_MS);
+    if whois_request_delay_ms != configured_whois_request_delay_ms {
+        tracing::info!(
+            "Manual WHOIS refresh delay capped from {}ms to {}ms",
+            configured_whois_request_delay_ms,
+            whois_request_delay_ms
+        );
+    }
+
     let summary = if let Some(domain_ids) = payload.domain_ids {
         crate::services::whois::refresh_selected_domains(
             &state.db,
